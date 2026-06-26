@@ -13,6 +13,7 @@ import com.example.douyin.local.db.entity.VideoEntity;
 import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
+import com.example.douyin.network.model.UserProfileDto;
 import com.example.douyin.network.model.VideoDto;
 import com.example.douyin.oss.OssConfig;
 import com.example.douyin.oss.OssUploadService;
@@ -81,6 +82,25 @@ public class LocalVideoService {
         feedPage.hasMore = hasMore;
         feedPage.list = toVideoDtoList(entities, currentUserId);
         return ApiResponse.ok(feedPage);
+    }
+
+    public ApiResponse<UserProfileDto> getUserProfile(long userId) {
+        UserEntity user = userDao.findById(userId);
+        if (user == null) {
+            return ApiResponse.error(404, "用户不存在");
+        }
+
+        UserProfileDto dto = new UserProfileDto();
+        dto.id = user.id;
+        dto.username = user.username;
+        dto.nickname = user.nickname;
+        dto.createdAt = user.createdAt;
+        if (!TextUtils.isEmpty(user.avatarPath)) {
+            dto.avatarUrl = EntityMapper.toVideoUrl(user.avatarPath);
+        }
+        dto.videoCount = videoDao.countByUserId(userId);
+        dto.totalLikeCount = videoDao.sumLikeCountByUserId(userId);
+        return ApiResponse.ok(dto);
     }
 
     public ApiResponse<VideoDto> publishVideo(long userId, File sourceFile, File coverFile, String description)

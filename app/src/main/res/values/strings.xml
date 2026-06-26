@@ -41,6 +41,13 @@
     <string name="register_success">注册成功</string>
     <string name="profile_loading">加载用户信息…</string>
     <string name="profile_load_failed">加载失败</string>
+    <string name="profile_stat_videos">作品</string>
+    <string name="profile_stat_likes">获赞</string>
+    <string name="profile_works_tab">作品</string>
+    <string name="profile_videos_empty">暂无作品</string>
+    <string name="profile_videos_load_failed">作品加载失败</string>
+    <string name="profile_video_cover">视频封面</string>
+    <string name="profile_swipe_back_hint">右滑返回视频</string>
     <string name="logout_success">已退出登录</string>
 
     <string name="feed_empty">暂无视频</string>

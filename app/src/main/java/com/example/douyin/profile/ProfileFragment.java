@@ -5,8 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -15,18 +13,12 @@ import androidx.fragment.app.Fragment;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
-import com.example.douyin.network.ApiCallback;
-import com.example.douyin.network.model.UserDto;
 import com.example.douyin.repository.AuthRepository;
-import com.google.android.material.button.MaterialButton;
 
 public class ProfileFragment extends Fragment {
 
     private AuthRepository authRepository;
-    private TextView tvNickname;
-    private TextView tvUsername;
-    private ProgressBar progressProfile;
-    private MaterialButton btnLogout;
+    private UserProfileController profileController;
 
     @Nullable
     @Override
@@ -41,55 +33,36 @@ public class ProfileFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         authRepository = new AuthRepository(requireContext());
 
-        tvNickname = view.findViewById(R.id.tv_nickname);
-        tvUsername = view.findViewById(R.id.tv_username);
-        progressProfile = view.findViewById(R.id.progress_profile);
-        btnLogout = view.findViewById(R.id.btn_logout);
+        if (!authRepository.isLoggedIn()) {
+            navigateToLogin();
+            return;
+        }
 
-        btnLogout.setOnClickListener(v -> logout());
-        loadUserInfo();
+        profileController = new UserProfileController(
+                view,
+                authRepository.getUserId(),
+                true,
+                false,
+                this::logout
+        );
+        profileController.load();
+    }
+
+    public void refreshProfile() {
+        if (profileController != null) {
+            profileController.refresh();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (authRepository.isLoggedIn()) {
-            loadUserInfo();
+        if (authRepository == null) {
+            authRepository = new AuthRepository(requireContext());
         }
-    }
-
-    private void loadUserInfo() {
         if (!authRepository.isLoggedIn()) {
-            tvNickname.setText(R.string.profile_load_failed);
-            tvUsername.setText("");
-            return;
+            navigateToLogin();
         }
-
-        progressProfile.setVisibility(View.VISIBLE);
-        authRepository.getMe(new ApiCallback<UserDto>() {
-            @Override
-            public void onSuccess(UserDto data) {
-                if (!isAdded()) {
-                    return;
-                }
-                progressProfile.setVisibility(View.GONE);
-                tvNickname.setText(data.nickname);
-                tvUsername.setText(getString(R.string.hint_username) + ": " + data.username);
-            }
-
-            @Override
-            public void onError(int code, String message) {
-                if (!isAdded()) {
-                    return;
-                }
-                progressProfile.setVisibility(View.GONE);
-                tvNickname.setText(R.string.profile_load_failed);
-                tvUsername.setText(message);
-                if (code == 401) {
-                    navigateToLogin();
-                }
-            }
-        });
     }
 
     private void logout() {

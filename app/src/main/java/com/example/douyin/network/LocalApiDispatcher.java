@@ -130,6 +130,11 @@ public final class LocalApiDispatcher {
                 );
             }
 
+            if ("GET".equals(method) && path.matches("/api/users/\\d+")) {
+                long targetUserId = Long.parseLong(path.substring("/api/users/".length()));
+                return LocalApiResult.from(videoService.getUserProfile(targetUserId), gson);
+            }
+
             return LocalApiResult.from(ApiResponse.error(404, "接口不存在: " + path), gson);
         } catch (Exception e) {
             return LocalApiResult.from(

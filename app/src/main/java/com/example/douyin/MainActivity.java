@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK) {
                     refreshFeedIfVisible();
+                    refreshProfileIfVisible();
                 }
             });
 
@@ -85,6 +86,11 @@ public class MainActivity extends AppCompatActivity {
                 openPublishFlow();
                 return false;
             }
+            if (itemId == R.id.nav_profile && !authRepository.isLoggedIn()) {
+                Toast.makeText(this, R.string.login_required, Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, LoginActivity.class));
+                return false;
+            }
             showFragmentForNavItem(itemId);
             return true;
         });
@@ -103,6 +109,13 @@ public class MainActivity extends AppCompatActivity {
         Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_FEED);
         if (fragment instanceof FeedFragment) {
             ((FeedFragment) fragment).refreshFeed();
+        }
+    }
+
+    private void refreshProfileIfVisible() {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_PROFILE);
+        if (fragment instanceof ProfileFragment) {
+            ((ProfileFragment) fragment).refreshProfile();
         }
     }
 

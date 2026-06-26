@@ -10,6 +10,7 @@ import com.example.douyin.network.model.LoginResult;
 import com.example.douyin.network.model.PostCommentRequest;
 import com.example.douyin.network.model.RegisterRequest;
 import com.example.douyin.network.model.UserDto;
+import com.example.douyin.network.model.UserProfileDto;
 import com.example.douyin.network.model.VideoDto;
 
 import okhttp3.MultipartBody;
@@ -33,6 +34,9 @@ public interface DouyinApi {
 
     @GET("api/users/me")
     Call<ApiResponse<UserDto>> getMe();
+
+    @GET("api/users/{id}")
+    Call<ApiResponse<UserProfileDto>> getUserProfile(@Path("id") long userId);
 
     @GET("api/videos/feed")
     Call<ApiResponse<FeedPage>> getFeed(
