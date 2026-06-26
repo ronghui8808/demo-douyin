@@ -10,6 +10,7 @@ import androidx.core.view.WindowCompat;
 import com.example.douyin.MainActivity;
 import com.example.douyin.R;
 import com.example.douyin.network.TokenStore;
+import com.example.douyin.trace.AuthTrace;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -18,20 +19,22 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_splash);
-        // 延迟到下一帧再跳转，避免与系统 Splash 动画冲突（MIUI TransitionChain 警告）
         findViewById(R.id.tv_splash).post(this::routeNextScreen);
     }
 
     private void routeNextScreen() {
-        Intent intent;
-        if (TokenStore.get(this).isLoggedIn()) {
-            intent = new Intent(this, MainActivity.class);
-        } else {
-            intent = new Intent(this, LoginActivity.class);
+        AuthTrace.begin("auth_splash_route");
+        try {
+            boolean loggedIn = TokenStore.get(this).isLoggedIn();
+            Intent intent = loggedIn
+                    ? new Intent(this, MainActivity.class)
+                    : new Intent(this, LoginActivity.class);
+            startActivity(intent);
+            overridePendingTransition(0, 0);
+            finish();
+            overridePendingTransition(0, 0);
+        } finally {
+            AuthTrace.end();
         }
-        startActivity(intent);
-        overridePendingTransition(0, 0);
-        finish();
-        overridePendingTransition(0, 0);
     }
 }

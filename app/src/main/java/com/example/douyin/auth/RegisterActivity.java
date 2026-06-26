@@ -14,7 +14,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.example.douyin.BuildConfig;
 import com.example.douyin.MainActivity;
 import com.example.douyin.R;
 import com.example.douyin.network.ApiCallback;
@@ -25,35 +24,34 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-public class LoginActivity extends AppCompatActivity {
+public class RegisterActivity extends AppCompatActivity {
 
     private AuthRepository authRepository;
     private TextInputLayout tilUsername;
+    private TextInputLayout tilNickname;
     private TextInputLayout tilPassword;
+    private TextInputLayout tilPasswordConfirm;
     private TextInputEditText etUsername;
+    private TextInputEditText etNickname;
     private TextInputEditText etPassword;
-    private MaterialButton btnLogin;
-    private ProgressBar progressLogin;
+    private TextInputEditText etPasswordConfirm;
+    private MaterialButton btnRegister;
+    private ProgressBar progressRegister;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         authRepository = new AuthRepository(this);
 
-        if (authRepository.isLoggedIn()) {
-            goToMain();
-            return;
-        }
-
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_register);
         setupWindowInsets();
         bindViews();
         setupActions();
     }
 
     private void setupWindowInsets() {
-        View root = findViewById(R.id.login_root);
+        View root = findViewById(R.id.register_root);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -63,36 +61,38 @@ public class LoginActivity extends AppCompatActivity {
 
     private void bindViews() {
         tilUsername = findViewById(R.id.til_username);
+        tilNickname = findViewById(R.id.til_nickname);
         tilPassword = findViewById(R.id.til_password);
+        tilPasswordConfirm = findViewById(R.id.til_password_confirm);
         etUsername = findViewById(R.id.et_username);
+        etNickname = findViewById(R.id.et_nickname);
         etPassword = findViewById(R.id.et_password);
-        btnLogin = findViewById(R.id.btn_login);
-        progressLogin = findViewById(R.id.progress_login);
+        etPasswordConfirm = findViewById(R.id.et_password_confirm);
+        btnRegister = findViewById(R.id.btn_register);
+        progressRegister = findViewById(R.id.progress_register);
     }
 
     private void setupActions() {
-        btnLogin.setOnClickListener(v -> attemptLogin());
-        findViewById(R.id.tv_go_register).setOnClickListener(v ->
-                startActivity(new Intent(this, RegisterActivity.class)));
-
-        MaterialButton skipButton = findViewById(R.id.btn_skip_login);
-        if (BuildConfig.DEBUG) {
-            skipButton.setVisibility(View.VISIBLE);
-            skipButton.setOnClickListener(v -> loginDemoAccount());
-        }
+        btnRegister.setOnClickListener(v -> attemptRegister());
+        findViewById(R.id.tv_go_login).setOnClickListener(v -> finish());
     }
 
-    private void attemptLogin() {
-        AuthTrace.begin("auth_login_click");
+    private void attemptRegister() {
+        AuthTrace.begin("auth_register_click");
         try {
-            tilUsername.setError(null);
-            tilPassword.setError(null);
+            clearErrors();
 
             String username = getText(etUsername);
+            String nickname = getText(etNickname);
             String password = getText(etPassword);
+            String passwordConfirm = getText(etPasswordConfirm);
 
             if (TextUtils.isEmpty(username)) {
                 tilUsername.setError(getString(R.string.error_username_empty));
+                return;
+            }
+            if (TextUtils.isEmpty(nickname)) {
+                tilNickname.setError(getString(R.string.error_nickname_empty));
                 return;
             }
             if (TextUtils.isEmpty(password)) {
@@ -103,19 +103,24 @@ public class LoginActivity extends AppCompatActivity {
                 tilPassword.setError(getString(R.string.error_password_short));
                 return;
             }
+            if (!password.equals(passwordConfirm)) {
+                tilPasswordConfirm.setError(getString(R.string.error_password_mismatch));
+                return;
+            }
 
             setLoading(true);
-            authRepository.login(username, password, new ApiCallback<LoginResult>() {
+            authRepository.register(username, password, nickname, new ApiCallback<LoginResult>() {
                 @Override
                 public void onSuccess(LoginResult data) {
                     setLoading(false);
-                    Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, R.string.register_success, Toast.LENGTH_SHORT).show();
                     goToMain();
                 }
+
                 @Override
                 public void onError(int code, String message) {
                     setLoading(false);
-                    Toast.makeText(LoginActivity.this, message, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
                 }
             });
         } finally {
@@ -123,16 +128,17 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    private void loginDemoAccount() {
-        etUsername.setText("demo");
-        etPassword.setText("123456");
-        attemptLogin();
+    private void clearErrors() {
+        tilUsername.setError(null);
+        tilNickname.setError(null);
+        tilPassword.setError(null);
+        tilPasswordConfirm.setError(null);
     }
 
     private void setLoading(boolean loading) {
-        btnLogin.setEnabled(!loading);
-        btnLogin.setText(loading ? "" : getString(R.string.action_login));
-        progressLogin.setVisibility(loading ? View.VISIBLE : View.GONE);
+        btnRegister.setEnabled(!loading);
+        btnRegister.setText(loading ? "" : getString(R.string.action_register));
+        progressRegister.setVisibility(loading ? View.VISIBLE : View.GONE);
     }
 
     private void goToMain() {

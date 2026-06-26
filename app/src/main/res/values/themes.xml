@@ -23,4 +23,10 @@
         <item name="labelVisibilityMode">labeled</item>
     </style>
 
+    <style name="Widget.Douyin.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/douyin_text_input_stroke</item>
+        <item name="hintTextColor">@color/douyin_gray</item>
+        <item name="android:textColorHint">@color/douyin_gray</item>
+    </style>
+
 </resources>

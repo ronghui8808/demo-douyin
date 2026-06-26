@@ -15,7 +15,31 @@
     <string name="publish_coming_soon">拍摄功能开发中</string>
 
     <string name="splash_loading">加载中…</string>
+
     <string name="login_title">登录</string>
-    <string name="login_placeholder_hint">登录页将在后续任务中实现</string>
+    <string name="login_subtitle">登录后体验完整功能</string>
+    <string name="register_title">注册</string>
+    <string name="register_subtitle">创建账号，开始创作之旅</string>
+    <string name="hint_username">用户名</string>
+    <string name="hint_nickname">昵称</string>
+    <string name="hint_password">密码（至少 6 位）</string>
+    <string name="hint_password_confirm">确认密码</string>
+    <string name="action_login">登录</string>
+    <string name="action_register">注册</string>
+    <string name="action_logout">退出登录</string>
+    <string name="go_register">没有账号？立即注册</string>
+    <string name="go_login">已有账号？去登录</string>
+    <string name="demo_account_hint">演示账号：demo / 123456</string>
     <string name="login_skip_debug">跳过登录（调试）</string>
+
+    <string name="error_username_empty">请输入用户名</string>
+    <string name="error_password_empty">请输入密码</string>
+    <string name="error_password_short">密码至少 6 位</string>
+    <string name="error_password_mismatch">两次密码不一致</string>
+    <string name="error_nickname_empty">请输入昵称</string>
+    <string name="login_success">登录成功</string>
+    <string name="register_success">注册成功</string>
+    <string name="profile_loading">加载用户信息…</string>
+    <string name="profile_load_failed">加载失败</string>
+    <string name="logout_success">已退出登录</string>
 </resources>
