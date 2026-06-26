@@ -1,8 +1,11 @@
 package com.example.douyin;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,9 +17,12 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
+import com.example.douyin.auth.LoginActivity;
 import com.example.douyin.feed.FeedFragment;
 import com.example.douyin.placeholder.PlaceholderFragment;
 import com.example.douyin.profile.ProfileFragment;
+import com.example.douyin.publish.CameraRecordActivity;
+import com.example.douyin.repository.AuthRepository;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
@@ -27,8 +33,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG_PROFILE = "tag_profile";
 
     private BottomNavigationView bottomNav;
+    private AuthRepository authRepository;
     @IdRes
     private int currentNavItemId = R.id.nav_home;
+
+    private final ActivityResultLauncher<Intent> publishLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    refreshFeedIfVisible();
+                }
+            });
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -36,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
 
+        authRepository = new AuthRepository(this);
         bottomNav = findViewById(R.id.bottom_nav);
         setupWindowInsets();
         setupBottomNavigation();
@@ -67,12 +82,28 @@ public class MainActivity extends AppCompatActivity {
         bottomNav.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_publish) {
-                Toast.makeText(this, R.string.publish_coming_soon, Toast.LENGTH_SHORT).show();
+                openPublishFlow();
                 return false;
             }
             showFragmentForNavItem(itemId);
             return true;
         });
+    }
+
+    private void openPublishFlow() {
+        if (!authRepository.isLoggedIn()) {
+            Toast.makeText(this, R.string.login_required, Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, LoginActivity.class));
+            return;
+        }
+        publishLauncher.launch(new Intent(this, CameraRecordActivity.class));
+    }
+
+    private void refreshFeedIfVisible() {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_FEED);
+        if (fragment instanceof FeedFragment) {
+            ((FeedFragment) fragment).refreshFeed();
+        }
     }
 
     private void showFragmentForNavItem(@IdRes int navItemId) {

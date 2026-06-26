@@ -57,4 +57,17 @@
     <string name="comment_content_empty">请输入评论内容</string>
     <string name="login_required">请先登录</string>
     <string name="demo_author">演示用户</string>
+
+    <string name="action_close">关闭</string>
+    <string name="action_back">返回</string>
+    <string name="camera_record_hint">点击按钮开始/结束录制</string>
+    <string name="camera_permission_denied">需要相机和麦克风权限</string>
+    <string name="record_time_start">00:00</string>
+    <string name="publish_description_hint">添加描述… #抖音</string>
+    <string name="publish_action">发布</string>
+    <string name="publish_default_description">新作品 #抖音</string>
+    <string name="publish_success">发布成功</string>
+    <string name="publish_failed">发布失败</string>
+    <string name="publish_video_invalid">视频文件无效</string>
+    <string name="publish_uploading">正在上传…</string>
 </resources>

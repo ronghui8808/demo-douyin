@@ -16,6 +16,11 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <style name="Theme.Douyin.Camera" parent="Theme.Douyin">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+
     <style name="Widget.Douyin.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
         <item name="android:background">@color/bottom_nav_bg</item>
         <item name="itemIconTint">@color/bottom_nav_color</item>

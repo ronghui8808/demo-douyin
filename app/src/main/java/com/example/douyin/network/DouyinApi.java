@@ -44,7 +44,8 @@ public interface DouyinApi {
     @POST("api/videos")
     Call<ApiResponse<VideoDto>> publishVideo(
             @Part MultipartBody.Part video,
-            @Part("description") RequestBody description
+            @Part("description") RequestBody description,
+            @Part MultipartBody.Part cover
     );
 
     @POST("api/videos/{id}/like")

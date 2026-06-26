@@ -8,7 +8,14 @@ import com.example.douyin.network.RetrofitClient;
 import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
+import com.example.douyin.network.model.VideoDto;
 import com.example.douyin.util.AppExecutors;
+
+import java.io.File;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -28,6 +35,29 @@ public class VideoRepository {
 
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
         api.toggleLike(videoId).enqueue(new SimpleCallback<>(callback));
+    }
+
+    public void publishVideo(File videoFile, File coverFile, String description,
+                             ApiCallback<VideoDto> callback) {
+        RequestBody descriptionBody = RequestBody.create(
+                description != null ? description : "",
+                MediaType.parse("text/plain")
+        );
+        MultipartBody.Part videoPart = MultipartBody.Part.createFormData(
+                "video",
+                videoFile.getName(),
+                RequestBody.create(videoFile, MediaType.parse("video/mp4"))
+        );
+        MultipartBody.Part coverPart = null;
+        if (coverFile != null && coverFile.exists()) {
+            coverPart = MultipartBody.Part.createFormData(
+                    "cover",
+                    coverFile.getName(),
+                    RequestBody.create(coverFile, MediaType.parse("image/jpeg"))
+            );
+        }
+        api.publishVideo(videoPart, descriptionBody, coverPart)
+                .enqueue(new SimpleCallback<>(callback));
     }
 
     private static class SimpleCallback<T> implements Callback<ApiResponse<T>> {

@@ -97,6 +97,12 @@ public class FeedFragment extends Fragment {
         pagerAdapter.updateCommentCount(videoId, commentCount);
     }
 
+    public void refreshFeed() {
+        if (isAdded()) {
+            loadFeed();
+        }
+    }
+
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
         if (!authRepository.isLoggedIn()) {
             Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
