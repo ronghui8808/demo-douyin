@@ -49,6 +49,13 @@ public class FeedPagerAdapter extends FragmentStateAdapter {
         }
     }
 
+    public void updateCommentCount(long videoId, int commentCount) {
+        int index = indexOf(videoId);
+        if (index >= 0) {
+            videos.get(index).commentCount = commentCount;
+        }
+    }
+
     @NonNull
     @Override
     public Fragment createFragment(int position) {

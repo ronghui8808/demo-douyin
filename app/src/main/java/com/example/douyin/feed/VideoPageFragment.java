@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.douyin.R;
+import com.example.douyin.comment.CommentBottomSheet;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.VideoDto;
@@ -142,9 +143,27 @@ public class VideoPageFragment extends Fragment {
 
     private void setupActions(View root) {
         btnLike.setOnClickListener(v -> onLikeClicked());
-        root.findViewById(R.id.btn_comment).setOnClickListener(v ->
-                Toast.makeText(requireContext(), R.string.comment_coming_soon, Toast.LENGTH_SHORT).show());
+        root.findViewById(R.id.btn_comment).setOnClickListener(v -> openComments());
         root.findViewById(R.id.btn_share).setOnClickListener(v -> shareVideo());
+    }
+
+    private void openComments() {
+        if (video == null) {
+            return;
+        }
+        CommentBottomSheet sheet = CommentBottomSheet.newInstance(video.id, video.commentCount);
+        sheet.setCommentPostedListener((videoId, newCommentCount) -> {
+            if (!isAdded() || video == null || video.id != videoId) {
+                return;
+            }
+            video.commentCount = newCommentCount;
+            tvCommentCount.setText(CountFormatter.format(newCommentCount));
+            Fragment parent = getParentFragment();
+            if (parent instanceof FeedFragment) {
+                ((FeedFragment) parent).onVideoCommentChanged(videoId, newCommentCount);
+            }
+        });
+        sheet.show(getParentFragmentManager(), "comments");
     }
 
     private void onLikeClicked() {
