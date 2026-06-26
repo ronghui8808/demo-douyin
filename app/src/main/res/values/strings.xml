@@ -70,4 +70,8 @@
     <string name="publish_failed">发布失败</string>
     <string name="publish_video_invalid">视频文件无效</string>
     <string name="publish_uploading">正在上传…</string>
+    <string name="publish_album_label">相册</string>
+    <string name="publish_video_importing">正在导入视频…</string>
+    <string name="publish_video_import_failed">视频导入失败</string>
+    <string name="action_cancel">取消</string>
 </resources>

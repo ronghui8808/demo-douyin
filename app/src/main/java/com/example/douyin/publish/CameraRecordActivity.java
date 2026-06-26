@@ -6,9 +6,12 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.net.Uri;
+import android.util.TypedValue;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,8 +26,12 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.example.douyin.R;
+import com.example.douyin.util.AppExecutors;
+import com.example.douyin.util.MediaGalleryHelper;
+import com.example.douyin.util.VideoImportHelper;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -38,8 +45,12 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
     private TextureView texturePreview;
     private View recordInner;
     private TextView tvRecordTime;
+    private ImageView ivAlbumThumb;
     private CameraRecorder cameraRecorder;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private final ActivityResultLauncher<String> pickVideoLauncher =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), this::onVideoPicked);
 
     private final ActivityResultLauncher<Intent> publishLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -85,9 +96,11 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
         texturePreview = findViewById(R.id.texture_preview);
         recordInner = findViewById(R.id.view_record_inner);
         tvRecordTime = findViewById(R.id.tv_record_time);
+        ivAlbumThumb = findViewById(R.id.iv_album_thumb);
 
         ImageButton btnClose = findViewById(R.id.btn_close);
         View btnRecord = findViewById(R.id.btn_record);
+        View btnAlbum = findViewById(R.id.btn_album);
 
         cameraRecorder = new CameraRecorder(this, texturePreview, this);
 
@@ -99,6 +112,7 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
                 requestPermissions();
             }
         });
+        btnAlbum.setOnClickListener(v -> pickVideoLauncher.launch("video/*"));
 
         requestPermissions();
     }
@@ -106,12 +120,48 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
     @Override
     protected void onResume() {
         super.onResume();
+        loadAlbumThumbnail();
         if (hasAllPermissions() && cameraRecorder != null) {
             cameraRecorder.startBackgroundThread();
             if (texturePreview.isAvailable()) {
                 cameraRecorder.openCamera();
             }
         }
+    }
+
+    private void loadAlbumThumbnail() {
+        int sizePx = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                44f,
+                getResources().getDisplayMetrics()
+        );
+        MediaGalleryHelper.loadLatestThumbnail(this, ivAlbumThumb, sizePx);
+    }
+
+    private void onVideoPicked(@Nullable Uri uri) {
+        if (uri == null) {
+            return;
+        }
+        Toast.makeText(this, R.string.publish_video_importing, Toast.LENGTH_SHORT).show();
+        AppExecutors.get().diskIo(() -> {
+            try {
+                String path = VideoImportHelper.copyToCache(getApplicationContext(), uri).getAbsolutePath();
+                AppExecutors.get().mainThread(() -> openPublishWithVideo(path));
+            } catch (IOException e) {
+                AppExecutors.get().mainThread(() ->
+                        Toast.makeText(
+                                CameraRecordActivity.this,
+                                R.string.publish_video_import_failed,
+                                Toast.LENGTH_SHORT
+                        ).show());
+            }
+        });
+    }
+
+    private void openPublishWithVideo(String videoPath) {
+        Intent intent = new Intent(this, PublishActivity.class);
+        intent.putExtra(PublishActivity.EXTRA_VIDEO_PATH, videoPath);
+        publishLauncher.launch(intent);
     }
 
     @Override

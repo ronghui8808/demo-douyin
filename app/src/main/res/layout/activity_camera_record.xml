@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -7,30 +8,37 @@
 
     <TextureView
         android:id="@+id/texture_preview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
         android:id="@+id/btn_close"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_gravity="start|top"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:background="@android:color/transparent"
         android:contentDescription="@string/action_close"
         android:src="@drawable/ic_close"
-        android:tint="@color/white" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/white" />
 
     <TextView
         android:id="@+id/tv_record_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="24dp"
         android:textColor="@color/white"
         android:textSize="16sp"
         android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         tools:text="00:05"
         tools:visibility="visible" />
 
@@ -38,19 +46,23 @@
         android:id="@+id/tv_record_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="120dp"
+        android:layout_marginBottom="16dp"
         android:text="@string/camera_record_hint"
         android:textColor="@color/douyin_overlay_text"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        app:layout_constraintBottom_toTopOf="@id/btn_record"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <FrameLayout
         android:id="@+id/btn_record"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="48dp"
-        android:background="@drawable/bg_record_outer">
+        android:background="@drawable/bg_record_outer"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
         <View
             android:id="@+id/view_record_inner"
@@ -60,4 +72,35 @@
             android:background="@drawable/bg_record_inner" />
     </FrameLayout>
 
-</FrameLayout>
+    <LinearLayout
+        android:id="@+id/btn_album"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="@id/btn_record"
+        app:layout_constraintStart_toEndOf="@id/btn_record"
+        app:layout_constraintTop_toTopOf="@id/btn_record">
+
+        <ImageView
+            android:id="@+id/iv_album_thumb"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_album_thumbnail"
+            android:contentDescription="@string/publish_album_label"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/publish_album_label"
+            android:textColor="@color/white"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
