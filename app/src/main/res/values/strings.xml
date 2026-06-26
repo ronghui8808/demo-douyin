@@ -1,3 +1,21 @@
 <resources>
-    <string name="app_name">douyin</string>
+    <string name="app_name">抖音</string>
+
+    <string name="nav_home">首页</string>
+    <string name="nav_friends">朋友</string>
+    <string name="nav_publish">发布</string>
+    <string name="nav_messages">消息</string>
+    <string name="nav_profile">我</string>
+
+    <string name="tab_home_title">首页</string>
+    <string name="tab_friends_title">朋友</string>
+    <string name="tab_messages_title">消息</string>
+    <string name="tab_profile_title">我</string>
+    <string name="placeholder_coming_soon">敬请期待</string>
+    <string name="publish_coming_soon">拍摄功能开发中</string>
+
+    <string name="splash_loading">加载中…</string>
+    <string name="login_title">登录</string>
+    <string name="login_placeholder_hint">登录页将在后续任务中实现</string>
+    <string name="login_skip_debug">跳过登录（调试）</string>
 </resources>
