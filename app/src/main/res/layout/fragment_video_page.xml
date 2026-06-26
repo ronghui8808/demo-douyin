@@ -2,12 +2,22 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
+    android:background="@color/black"
+    android:clipChildren="true">
 
-    <TextureView
-        android:id="@+id/texture_video"
+    <FrameLayout
+        android:id="@+id/video_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:clipChildren="true">
+
+        <TextureView
+            android:id="@+id/texture_video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
+    </FrameLayout>
 
     <include
         android:id="@+id/overlay"

@@ -1,23 +1,51 @@
 [
   {
-    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    "videoFile": "seed/抖音2026626-174754.mp4",
     "authorUsername": "demo",
-    "description": "演示视频 1 #抖音 #测试",
+    "description": "抖音日常 #记录生活",
     "likeCount": 128,
     "commentCount": 12
   },
   {
-    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    "videoFile": "seed/抖音2026626-192768.mp4",
     "authorUsername": "demo",
-    "description": "演示视频 2 #旅行",
+    "description": "抖音日常 #随手拍",
     "likeCount": 256,
     "commentCount": 33
   },
   {
-    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    "videoFile": "seed/抖音2026626-203002.mp4",
     "authorUsername": "demo",
-    "description": "演示视频 3 #搞笑",
+    "description": "抖音日常 #分享",
+    "likeCount": 189,
+    "commentCount": 21
+  },
+  {
+    "videoFile": "seed/抖音2026626-435769.mp4",
+    "authorUsername": "demo",
+    "description": "抖音日常 #vlog",
     "likeCount": 512,
     "commentCount": 48
+  },
+  {
+    "videoFile": "seed/抖音2026626-475493.mp4",
+    "authorUsername": "demo",
+    "description": "抖音日常 #精彩瞬间",
+    "likeCount": 367,
+    "commentCount": 29
+  },
+  {
+    "videoFile": "seed/抖音2026626-511739.mp4",
+    "authorUsername": "demo",
+    "description": "抖音日常 #热门",
+    "likeCount": 421,
+    "commentCount": 36
+  },
+  {
+    "videoFile": "seed/抖音2026626-958698.mp4",
+    "authorUsername": "demo",
+    "description": "抖音日常 #推荐",
+    "likeCount": 298,
+    "commentCount": 18
   }
 ]

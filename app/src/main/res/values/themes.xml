@@ -17,7 +17,7 @@
     </style>
 
     <style name="Widget.Douyin.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
-        <item name="android:background">@color/black</item>
+        <item name="android:background">@color/bottom_nav_bg</item>
         <item name="itemIconTint">@color/bottom_nav_color</item>
         <item name="itemTextColor">@color/bottom_nav_color</item>
         <item name="labelVisibilityMode">labeled</item>

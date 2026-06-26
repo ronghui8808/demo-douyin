@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.douyin.R;
+import com.example.douyin.cache.MediaCacheManager;
 import com.example.douyin.comment.CommentBottomSheet;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.LikeResult;
@@ -32,6 +33,7 @@ public class VideoPageFragment extends Fragment {
     private VideoDto video;
     private VideoPlayerController playerController;
     private TextureView textureView;
+    private boolean playbackReady;
     private ImageView ivLike;
     private TextView tvLikeCount;
     private TextView tvCommentCount;
@@ -84,13 +86,44 @@ public class VideoPageFragment extends Fragment {
         setupActions(view);
 
         playerController = new VideoPlayerController(textureView);
-        playerController.setVideoUrl(video.videoUrl);
+        preparePlayback();
+    }
+
+    private void preparePlayback() {
+        MediaCacheManager.get(requireContext()).resolveVideoForPlayback(
+                video.videoUrl,
+                new MediaCacheManager.CacheCallback() {
+                    @Override
+                    public void onReady(String playableUrl) {
+                        if (!isAdded() || playerController == null) {
+                            return;
+                        }
+                        playbackReady = true;
+                        playerController.setVideoUrl(playableUrl);
+                        if (isPageActive() && isResumed()) {
+                            playerController.play();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (!isAdded() || playerController == null) {
+                            return;
+                        }
+                        playbackReady = true;
+                        playerController.setVideoUrl(video.videoUrl);
+                        if (isPageActive() && isResumed()) {
+                            playerController.play();
+                        }
+                    }
+                }
+        );
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (playerController != null && isPageActive()) {
+        if (playerController != null && playbackReady && isPageActive()) {
             playerController.play();
         }
     }

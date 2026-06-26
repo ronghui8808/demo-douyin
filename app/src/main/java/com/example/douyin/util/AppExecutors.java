@@ -11,6 +11,7 @@ public final class AppExecutors {
     private static final AppExecutors INSTANCE = new AppExecutors();
 
     private final ExecutorService diskIo = Executors.newSingleThreadExecutor();
+    private final ExecutorService network = Executors.newFixedThreadPool(3);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private AppExecutors() {
@@ -22,6 +23,10 @@ public final class AppExecutors {
 
     public void diskIo(Runnable runnable) {
         diskIo.execute(runnable);
+    }
+
+    public void network(Runnable runnable) {
+        network.execute(runnable);
     }
 
     public void mainThread(Runnable runnable) {

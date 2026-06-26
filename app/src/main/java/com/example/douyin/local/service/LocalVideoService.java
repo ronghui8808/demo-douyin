@@ -14,6 +14,8 @@ import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.VideoDto;
+import com.example.douyin.oss.OssConfig;
+import com.example.douyin.oss.OssUploadService;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -81,7 +83,7 @@ public class LocalVideoService {
         return ApiResponse.ok(feedPage);
     }
 
-    public ApiResponse<VideoDto> publishVideo(long userId, File sourceFile, String description)
+    public ApiResponse<VideoDto> publishVideo(long userId, File sourceFile, File coverFile, String description)
             throws IOException {
         if (sourceFile == null || !sourceFile.exists()) {
             return ApiResponse.error(400, "视频文件无效");
@@ -90,17 +92,29 @@ public class LocalVideoService {
             return ApiResponse.error(401, "未登录");
         }
 
-        File videosDir = new File(appContext.getFilesDir(), "videos");
-        if (!videosDir.exists() && !videosDir.mkdirs()) {
-            return ApiResponse.error(500, "无法创建视频目录");
+        String storedVideoPath;
+        String storedCoverPath = null;
+        try {
+            if (OssConfig.get().isConfigured()) {
+                OssUploadService uploader = OssUploadService.get(appContext);
+                storedVideoPath = uploader.uploadVideo(sourceFile, userId);
+                if (coverFile != null && coverFile.exists()) {
+                    storedCoverPath = uploader.uploadImage(coverFile, userId);
+                }
+            } else {
+                storedVideoPath = copyVideoToLocal(sourceFile);
+                if (coverFile != null && coverFile.exists()) {
+                    storedCoverPath = copyCoverToLocal(coverFile);
+                }
+            }
+        } catch (Exception e) {
+            return ApiResponse.error(500, e.getMessage() != null ? e.getMessage() : "上传失败");
         }
-
-        File targetFile = new File(videosDir, UUID.randomUUID().toString() + ".mp4");
-        copyFile(sourceFile, targetFile);
 
         VideoEntity entity = new VideoEntity();
         entity.userId = userId;
-        entity.filePath = targetFile.getAbsolutePath();
+        entity.filePath = storedVideoPath;
+        entity.coverPath = storedCoverPath;
         entity.description = TextUtils.isEmpty(description) ? "" : description.trim();
         entity.likeCount = 0;
         entity.commentCount = 0;
@@ -108,6 +122,29 @@ public class LocalVideoService {
         entity.id = videoDao.insert(entity);
 
         return ApiResponse.ok(toVideoDto(entity, userId));
+    }
+
+    private String copyVideoToLocal(File sourceFile) throws IOException {
+        File videosDir = new File(appContext.getFilesDir(), "videos");
+        if (!videosDir.exists() && !videosDir.mkdirs()) {
+            throw new IOException("无法创建视频目录");
+        }
+        File targetFile = new File(videosDir, UUID.randomUUID().toString() + ".mp4");
+        copyFile(sourceFile, targetFile);
+        return targetFile.getAbsolutePath();
+    }
+
+    private String copyCoverToLocal(File sourceFile) throws IOException {
+        File coversDir = new File(appContext.getFilesDir(), "covers");
+        if (!coversDir.exists() && !coversDir.mkdirs()) {
+            throw new IOException("无法创建封面目录");
+        }
+        String extension = sourceFile.getName().contains(".")
+                ? sourceFile.getName().substring(sourceFile.getName().lastIndexOf('.'))
+                : ".jpg";
+        File targetFile = new File(coversDir, UUID.randomUUID().toString() + extension);
+        copyFile(sourceFile, targetFile);
+        return targetFile.getAbsolutePath();
     }
 
     public ApiResponse<LikeResult> toggleLike(long userId, long videoId) {

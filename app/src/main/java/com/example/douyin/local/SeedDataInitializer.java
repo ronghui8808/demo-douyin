@@ -9,6 +9,7 @@ import com.example.douyin.local.db.UserDao;
 import com.example.douyin.local.db.VideoDao;
 import com.example.douyin.local.db.entity.UserEntity;
 import com.example.douyin.local.db.entity.VideoEntity;
+import com.example.douyin.oss.OssConfig;
 import com.example.douyin.util.PasswordHasher;
 
 import org.json.JSONArray;
@@ -89,6 +90,7 @@ public final class SeedDataInitializer {
                 VideoEntity video = new VideoEntity();
                 video.userId = userId;
                 video.filePath = filePath;
+                video.coverPath = resolveCoverPath(item);
                 video.description = item.optString("description", "");
                 video.likeCount = item.optInt("likeCount", 0);
                 video.commentCount = item.optInt("commentCount", 0);
@@ -101,6 +103,11 @@ public final class SeedDataInitializer {
     }
 
     private static String resolveVideoPath(Context context, JSONObject item) throws IOException {
+        String ossObjectKey = item.optString("ossObjectKey", "");
+        if (!TextUtils.isEmpty(ossObjectKey) && OssConfig.get().isConfigured()) {
+            return OssConfig.get().buildPublicUrl(ossObjectKey);
+        }
+
         String videoUrl = item.optString("videoUrl", "");
         if (!TextUtils.isEmpty(videoUrl)) {
             return videoUrl;
@@ -125,6 +132,14 @@ public final class SeedDataInitializer {
             }
         }
         return target.getAbsolutePath();
+    }
+
+    private static String resolveCoverPath(JSONObject item) {
+        String ossCoverKey = item.optString("ossCoverKey", "");
+        if (!TextUtils.isEmpty(ossCoverKey) && OssConfig.get().isConfigured()) {
+            return OssConfig.get().buildPublicUrl(ossCoverKey);
+        }
+        return item.optString("coverUrl", "");
     }
 
     private static JSONArray readJsonArray(Context context, String assetPath) throws Exception {

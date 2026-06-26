@@ -11,17 +11,25 @@ import androidx.annotation.NonNull;
 import java.io.IOException;
 
 public class VideoPlayerController implements TextureView.SurfaceTextureListener,
-        MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener {
+        MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
+        MediaPlayer.OnVideoSizeChangedListener {
 
     private final TextureView textureView;
     private MediaPlayer mediaPlayer;
     private String videoUrl;
     private boolean playWhenReady;
     private boolean isPrepared;
+    private int videoWidth;
+    private int videoHeight;
 
     public VideoPlayerController(TextureView textureView) {
         this.textureView = textureView;
         textureView.setSurfaceTextureListener(this);
+        textureView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                applyVideoTransform();
+            }
+        });
     }
 
     public void setVideoUrl(String url) {
@@ -48,6 +56,8 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
     public void release() {
         playWhenReady = false;
         isPrepared = false;
+        videoWidth = 0;
+        videoHeight = 0;
         textureView.setSurfaceTextureListener(null);
         releaseInternal();
     }
@@ -61,6 +71,7 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
 
     @Override
     public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
+        applyVideoTransform();
     }
 
     @Override
@@ -84,6 +95,7 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
         mediaPlayer.setLooping(true);
         mediaPlayer.setOnPreparedListener(this);
         mediaPlayer.setOnErrorListener(this);
+        mediaPlayer.setOnVideoSizeChangedListener(this);
         try {
             mediaPlayer.setDataSource(textureView.getContext(), Uri.parse(videoUrl));
             mediaPlayer.prepareAsync();
@@ -97,6 +109,7 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
         if (mediaPlayer != null) {
             mediaPlayer.setOnPreparedListener(null);
             mediaPlayer.setOnErrorListener(null);
+            mediaPlayer.setOnVideoSizeChangedListener(null);
             try {
                 mediaPlayer.stop();
             } catch (IllegalStateException ignored) {
@@ -109,14 +122,28 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
     @Override
     public void onPrepared(MediaPlayer mp) {
         isPrepared = true;
+        videoWidth = mp.getVideoWidth();
+        videoHeight = mp.getVideoHeight();
+        applyVideoTransform();
         if (playWhenReady) {
             mp.start();
         }
     }
 
     @Override
+    public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
+        videoWidth = width;
+        videoHeight = height;
+        applyVideoTransform();
+    }
+
+    @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         isPrepared = false;
         return true;
+    }
+
+    private void applyVideoTransform() {
+        VideoTransformHelper.applyFitWidth(textureView, videoWidth, videoHeight);
     }
 }

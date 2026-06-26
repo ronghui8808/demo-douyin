@@ -81,7 +81,7 @@ public final class LocalApiDispatcher {
                     return LocalApiResult.from(ApiResponse.error(400, "缺少视频文件"), gson);
                 }
                 return LocalApiResult.from(
-                        videoService.publishVideo(userId, parts.videoFile, parts.description),
+                        videoService.publishVideo(userId, parts.videoFile, parts.coverFile, parts.description),
                         gson
                 );
             }
@@ -203,6 +203,7 @@ public final class LocalApiDispatcher {
         }
 
         File videoFile = null;
+        File coverFile = null;
         String description = "";
 
         Buffer buffer = new Buffer();
@@ -233,6 +234,20 @@ public final class LocalApiDispatcher {
                             output.write(dataBuffer, 0, read);
                         }
                     }
+                } else if (disposition.contains("name=\"cover\"")) {
+                    File cacheDir = new File(context.getCacheDir(), "uploads");
+                    if (!cacheDir.exists()) {
+                        cacheDir.mkdirs();
+                    }
+                    coverFile = File.createTempFile("cover_", ".jpg", cacheDir);
+                    try (InputStream input = part.body().inputStream();
+                         OutputStream output = new FileOutputStream(coverFile)) {
+                        byte[] dataBuffer = new byte[8192];
+                        int read;
+                        while ((read = input.read(dataBuffer)) != -1) {
+                            output.write(dataBuffer, 0, read);
+                        }
+                    }
                 } else if (disposition.contains("name=\"description\"")) {
                     description = part.body().readUtf8();
                 }
@@ -242,12 +257,14 @@ public final class LocalApiDispatcher {
 
         PublishParts parts = new PublishParts();
         parts.videoFile = videoFile;
+        parts.coverFile = coverFile;
         parts.description = description;
         return parts;
     }
 
     private static final class PublishParts {
         File videoFile;
+        File coverFile;
         String description;
     }
 }

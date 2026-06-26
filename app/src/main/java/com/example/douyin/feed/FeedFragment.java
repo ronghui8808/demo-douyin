@@ -17,6 +17,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
+import com.example.douyin.cache.MediaCacheManager;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
@@ -72,6 +73,7 @@ public class FeedFragment extends Fragment {
             @Override
             public void onPageSelected(int position) {
                 activePosition = position;
+                prefetchAround(position);
             }
         });
 
@@ -124,6 +126,7 @@ public class FeedFragment extends Fragment {
                 tvEmpty.setVisibility(View.GONE);
                 tvError.setVisibility(View.GONE);
                 activePosition = 0;
+                prefetchAround(0);
             }
 
             @Override
@@ -134,6 +137,24 @@ public class FeedFragment extends Fragment {
                 showError(message);
             }
         });
+    }
+
+    private void prefetchAround(int position) {
+        MediaCacheManager cacheManager = MediaCacheManager.get(requireContext());
+        prefetchAt(cacheManager, position);
+        prefetchAt(cacheManager, position + 1);
+        prefetchAt(cacheManager, position - 1);
+    }
+
+    private void prefetchAt(MediaCacheManager cacheManager, int position) {
+        VideoDto video = pagerAdapter.getVideo(position);
+        if (video == null) {
+            return;
+        }
+        cacheManager.prefetchVideo(video.videoUrl);
+        if (video.coverUrl != null && !video.coverUrl.isEmpty()) {
+            cacheManager.prefetchImage(video.coverUrl);
+        }
     }
 
     private void showLoading() {
