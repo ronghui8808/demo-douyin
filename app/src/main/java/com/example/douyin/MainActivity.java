@@ -56,15 +56,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(bottomNav, (view, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            view.setPadding(
-                    view.getPaddingLeft(),
-                    view.getPaddingTop(),
-                    view.getPaddingRight(),
-                    systemBars.bottom
-            );
+            Insets navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            view.setPadding(0, 0, 0, navigationBars.bottom);
             return insets;
         });
+        ViewCompat.requestApplyInsets(bottomNav);
     }
 
     private void setupBottomNavigation() {

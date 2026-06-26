@@ -18,7 +18,8 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_splash);
-        routeNextScreen();
+        // 延迟到下一帧再跳转，避免与系统 Splash 动画冲突（MIUI TransitionChain 警告）
+        findViewById(R.id.tv_splash).post(this::routeNextScreen);
     }
 
     private void routeNextScreen() {
@@ -29,6 +30,8 @@ public class SplashActivity extends AppCompatActivity {
             intent = new Intent(this, LoginActivity.class);
         }
         startActivity(intent);
+        overridePendingTransition(0, 0);
         finish();
+        overridePendingTransition(0, 0);
     }
 }
