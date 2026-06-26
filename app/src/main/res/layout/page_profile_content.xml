@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.example.douyin.widget.ProfileSwipeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/profile_swipe_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <include layout="@layout/layout_user_profile" />
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:swipeRefreshLayoutProgressSpinnerBackgroundColor="@color/douyin_dark_gray">
+
+        <include layout="@layout/layout_user_profile" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </com.example.douyin.widget.ProfileSwipeLayout>

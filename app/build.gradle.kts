@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.fragment)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.lifecycle.runtime)
 
     implementation(libs.retrofit)

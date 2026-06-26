@@ -53,6 +53,18 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
         }
     }
 
+    public boolean isPlaying() {
+        return isPrepared && mediaPlayer != null && mediaPlayer.isPlaying();
+    }
+
+    public void togglePlayPause() {
+        if (isPlaying()) {
+            pause();
+        } else {
+            play();
+        }
+    }
+
     public void release() {
         playWhenReady = false;
         isPrepared = false;

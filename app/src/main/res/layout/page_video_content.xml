@@ -25,6 +25,25 @@
         android:id="@+id/overlay"
         layout="@layout/view_video_overlay" />
 
+    <ImageView
+        android:id="@+id/iv_pause_indicator"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        android:contentDescription="@string/video_paused_indicator"
+        android:src="@drawable/ic_video_paused"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/iv_double_tap_like"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_gravity="center"
+        android:contentDescription="@string/action_like"
+        android:src="@drawable/ic_like_active"
+        android:visibility="gone" />
+
     <ProgressBar
         android:id="@+id/progress_buffering"
         android:layout_width="48dp"

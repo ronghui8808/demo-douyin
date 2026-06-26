@@ -94,6 +94,11 @@ public class MainActivity extends AppCompatActivity {
             showFragmentForNavItem(itemId);
             return true;
         });
+        bottomNav.setOnItemReselectedListener(item -> {
+            if (item.getItemId() == R.id.nav_home) {
+                refreshFeedIfVisible();
+            }
+        });
     }
 
     private void openPublishFlow() {

@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.douyin.R;
 import com.example.douyin.network.ApiCallback;
@@ -26,12 +27,18 @@ public class UserProfileController {
         void onLogoutRequested();
     }
 
+    public interface RefreshListener {
+        void onRefreshComplete();
+    }
+
     private final View root;
     private final long userId;
     private final boolean showLogout;
     private final boolean embedded;
     @Nullable
     private final LogoutListener logoutListener;
+    @Nullable
+    private RefreshListener refreshListener;
 
     private final UserRepository userRepository;
     private final ProfileVideoAdapter videoAdapter;
@@ -47,8 +54,11 @@ public class UserProfileController {
     private TextView tvVideosEmpty;
     private RecyclerView rvVideos;
     private MaterialButton btnLogout;
+    @Nullable
+    private SwipeRefreshLayout swipeRefresh;
 
     private boolean loaded;
+    private boolean refreshPending;
 
     public UserProfileController(@NonNull View root,
                                  long userId,
@@ -63,6 +73,10 @@ public class UserProfileController {
         this.userRepository = new UserRepository(root.getContext());
         this.videoAdapter = new ProfileVideoAdapter();
         bindViews();
+    }
+
+    public void setRefreshListener(@Nullable RefreshListener refreshListener) {
+        this.refreshListener = refreshListener != null ? refreshListener : this::stopRefreshIndicator;
     }
 
     private void bindViews() {
@@ -90,6 +104,25 @@ public class UserProfileController {
 
         rvVideos.setLayoutManager(new GridLayoutManager(root.getContext(), 3));
         rvVideos.setAdapter(videoAdapter);
+        bindSwipeRefresh();
+    }
+
+    private void bindSwipeRefresh() {
+        swipeRefresh = root.findViewById(R.id.swipe_refresh);
+        if (swipeRefresh == null) {
+            return;
+        }
+        swipeRefresh.setColorSchemeResources(R.color.douyin_red);
+        swipeRefresh.setOnRefreshListener(this::refresh);
+        if (refreshListener == null) {
+            refreshListener = this::stopRefreshIndicator;
+        }
+    }
+
+    private void stopRefreshIndicator() {
+        if (swipeRefresh != null) {
+            swipeRefresh.setRefreshing(false);
+        }
     }
 
     public void load() {
@@ -113,16 +146,38 @@ public class UserProfileController {
                 progressProfile.setVisibility(View.GONE);
                 tvVideosEmpty.setVisibility(View.VISIBLE);
                 tvVideosEmpty.setText(R.string.profile_load_failed);
+                notifyRefreshComplete();
             }
         });
     }
 
+    public void refreshOnEnter() {
+        if (userId <= 0) {
+            return;
+        }
+        if (swipeRefresh != null) {
+            swipeRefresh.setRefreshing(true);
+        }
+        refresh();
+    }
+
     public void refresh() {
         loaded = false;
+        refreshPending = true;
         videoAdapter.submitList(null);
         rvVideos.setVisibility(View.GONE);
         tvVideosEmpty.setVisibility(View.GONE);
         load();
+    }
+
+    private void notifyRefreshComplete() {
+        if (!refreshPending) {
+            return;
+        }
+        refreshPending = false;
+        if (refreshListener != null) {
+            refreshListener.onRefreshComplete();
+        }
     }
 
     private void bindProfile(@NonNull UserProfileDto profile) {
@@ -150,11 +205,12 @@ public class UserProfileController {
                 if (list == null || list.isEmpty()) {
                     rvVideos.setVisibility(View.GONE);
                     tvVideosEmpty.setVisibility(View.VISIBLE);
-                    return;
+                } else {
+                    rvVideos.setVisibility(View.VISIBLE);
+                    tvVideosEmpty.setVisibility(View.GONE);
+                    videoAdapter.submitList(list);
                 }
-                rvVideos.setVisibility(View.VISIBLE);
-                tvVideosEmpty.setVisibility(View.GONE);
-                videoAdapter.submitList(list);
+                notifyRefreshComplete();
             }
 
             @Override
@@ -162,6 +218,7 @@ public class UserProfileController {
                 rvVideos.setVisibility(View.GONE);
                 tvVideosEmpty.setVisibility(View.VISIBLE);
                 tvVideosEmpty.setText(R.string.profile_videos_load_failed);
+                notifyRefreshComplete();
             }
         });
     }

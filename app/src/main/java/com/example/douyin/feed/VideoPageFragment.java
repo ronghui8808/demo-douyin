@@ -3,7 +3,9 @@ package com.example.douyin.feed;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.TextureView;
@@ -51,6 +53,10 @@ public class VideoPageFragment extends Fragment {
     private TextView tvAvatarLetter;
     private LinearLayout btnLike;
     private UserProfileController profileController;
+    private ImageView ivDoubleTapLike;
+    private ImageView ivPauseIndicator;
+    private boolean userPaused;
+    private boolean pendingProfileRefresh;
 
     public static VideoPageFragment newInstance(int position) {
         VideoPageFragment fragment = new VideoPageFragment();
@@ -105,8 +111,22 @@ public class VideoPageFragment extends Fragment {
             if (playerController != null) {
                 playerController.pause();
             }
-        } else if (playerController != null && playbackReady && isPageActive() && isResumed()) {
+            updatePauseIndicator();
+            refreshEmbeddedProfile();
+        } else if (playerController != null && playbackReady && isPageActive() && isResumed() && !userPaused) {
             playerController.play();
+            updatePauseIndicator();
+        } else {
+            updatePauseIndicator();
+        }
+    }
+
+    private void refreshEmbeddedProfile() {
+        if (profileController != null) {
+            pendingProfileRefresh = false;
+            profileController.refreshOnEnter();
+        } else {
+            pendingProfileRefresh = true;
         }
     }
 
@@ -124,11 +144,13 @@ public class VideoPageFragment extends Fragment {
         tvDescription = pageView.findViewById(R.id.tv_description);
         tvAvatarLetter = pageView.findViewById(R.id.tv_avatar_letter);
         btnLike = pageView.findViewById(R.id.btn_like);
+        ivPauseIndicator = pageView.findViewById(R.id.iv_pause_indicator);
 
         bindOverlay();
         setupActions(pageView);
         setupProfileSwipe(pageView);
         setupAvatarEntry(pageView);
+        setupVideoTapGestures(pageView);
 
         playerController = new VideoPlayerController(textureView);
         preparePlayback();
@@ -146,7 +168,10 @@ public class VideoPageFragment extends Fragment {
                 true,
                 null
         );
-        profileController.load();
+        if (pendingProfileRefresh) {
+            pendingProfileRefresh = false;
+            profileController.refreshOnEnter();
+        }
     }
 
     private void setupProfileSwipe(@NonNull View pageView) {
@@ -213,6 +238,104 @@ public class VideoPageFragment extends Fragment {
         slidePager.setCurrentItem(PAGE_VIDEO, true);
     }
 
+    private void setupVideoTapGestures(@NonNull View pageView) {
+        ivDoubleTapLike = pageView.findViewById(R.id.iv_double_tap_like);
+        View overlay = pageView.findViewById(R.id.overlay);
+        if (overlay == null) {
+            return;
+        }
+
+        GestureDetector detector = new GestureDetector(requireContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
+                        togglePlayPauseByTap();
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onDoubleTap(@NonNull MotionEvent e) {
+                        onDoubleTapLike(e.getX(), e.getY(), overlay, pageView);
+                        return true;
+                    }
+                });
+
+        overlay.setClickable(true);
+        overlay.setOnTouchListener((v, event) -> {
+            detector.onTouchEvent(event);
+            return false;
+        });
+    }
+
+    private void togglePlayPauseByTap() {
+        if (playerController == null || !playbackReady) {
+            return;
+        }
+        playerController.togglePlayPause();
+        userPaused = !playerController.isPlaying();
+        updatePauseIndicator();
+    }
+
+    private void updatePauseIndicator() {
+        if (ivPauseIndicator == null) {
+            return;
+        }
+        boolean show = playerController != null
+                && playbackReady
+                && !playerController.isPlaying()
+                && isShowingVideo()
+                && isPageActive()
+                && isResumed();
+        ivPauseIndicator.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void onDoubleTapLike(float x, float y, @NonNull View overlay, @NonNull View pageView) {
+        showDoubleTapLikeAnimation(x, y, overlay, pageView);
+        if (video != null && !video.isLiked) {
+            onLikeClicked();
+        }
+    }
+
+    private void showDoubleTapLikeAnimation(float x, float y,
+                                            @NonNull View overlay,
+                                            @NonNull View pageView) {
+        if (ivDoubleTapLike == null) {
+            return;
+        }
+        ivDoubleTapLike.animate().cancel();
+
+        int[] overlayLoc = new int[2];
+        int[] pageLoc = new int[2];
+        overlay.getLocationOnScreen(overlayLoc);
+        pageView.getLocationOnScreen(pageLoc);
+
+        float heartSize = ivDoubleTapLike.getWidth() > 0
+                ? ivDoubleTapLike.getWidth()
+                : 96f * getResources().getDisplayMetrics().density;
+        float heartX = overlayLoc[0] - pageLoc[0] + x - heartSize / 2f;
+        float heartY = overlayLoc[1] - pageLoc[1] + y - heartSize / 2f;
+
+        ivDoubleTapLike.setVisibility(View.VISIBLE);
+        ivDoubleTapLike.setX(heartX);
+        ivDoubleTapLike.setY(heartY);
+        ivDoubleTapLike.setAlpha(0f);
+        ivDoubleTapLike.setScaleX(0.5f);
+        ivDoubleTapLike.setScaleY(0.5f);
+        ivDoubleTapLike.animate()
+                .alpha(1f)
+                .scaleX(1.2f)
+                .scaleY(1.2f)
+                .setDuration(150L)
+                .withEndAction(() -> ivDoubleTapLike.animate()
+                        .alpha(0f)
+                        .scaleX(1.5f)
+                        .scaleY(1.5f)
+                        .setDuration(250L)
+                        .withEndAction(() -> ivDoubleTapLike.setVisibility(View.GONE))
+                        .start())
+                .start();
+    }
+
     private void preparePlayback() {
         MediaCacheManager.get(requireContext()).resolveVideoForPlayback(
                 video.videoUrl,
@@ -224,9 +347,10 @@ public class VideoPageFragment extends Fragment {
                         }
                         playbackReady = true;
                         playerController.setVideoUrl(playableUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo()) {
+                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
                             playerController.play();
                         }
+                        updatePauseIndicator();
                     }
 
                     @Override
@@ -236,9 +360,10 @@ public class VideoPageFragment extends Fragment {
                         }
                         playbackReady = true;
                         playerController.setVideoUrl(video.videoUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo()) {
+                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
                             playerController.play();
                         }
+                        updatePauseIndicator();
                     }
                 }
         );
@@ -251,9 +376,10 @@ public class VideoPageFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (playerController != null && playbackReady && isPageActive() && isShowingVideo()) {
+        if (playerController != null && playbackReady && isPageActive() && isShowingVideo() && !userPaused) {
             playerController.play();
         }
+        updatePauseIndicator();
     }
 
     @Override
@@ -261,6 +387,7 @@ public class VideoPageFragment extends Fragment {
         if (playerController != null) {
             playerController.pause();
         }
+        updatePauseIndicator();
         super.onPause();
     }
 
