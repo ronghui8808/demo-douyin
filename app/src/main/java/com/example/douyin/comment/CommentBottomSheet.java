@@ -2,27 +2,22 @@ package com.example.douyin.comment;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
-import com.example.douyin.network.ApiCallback;
-import com.example.douyin.network.model.CommentDto;
-import com.example.douyin.network.model.CommentPage;
+import com.example.douyin.databinding.BottomSheetCommentBinding;
 import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.repository.CommentRepository;
 import com.example.douyin.util.CountFormatter;
@@ -30,13 +25,10 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
-import java.util.List;
-
 public class CommentBottomSheet extends BottomSheetDialogFragment {
 
     private static final String ARG_VIDEO_ID = "video_id";
     private static final String ARG_COMMENT_COUNT = "comment_count";
-    private static final int PAGE_SIZE = 20;
 
     public interface CommentPostedListener {
         void onCommentPosted(long videoId, int newCommentCount);
@@ -46,22 +38,10 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
     private int commentCount;
     private CommentPostedListener postedListener;
 
-    private CommentRepository commentRepository;
+    private BottomSheetCommentBinding binding;
+    private CommentViewModel viewModel;
     private AuthRepository authRepository;
     private CommentAdapter adapter;
-
-    private TextView tvTitle;
-    private RecyclerView recyclerComments;
-    private ProgressBar progressLoading;
-    private ProgressBar progressLoadMore;
-    private TextView tvEmpty;
-    private EditText etComment;
-    private TextView btnSend;
-
-    private int currentPage;
-    private boolean hasMore;
-    private boolean loading;
-    private boolean posting;
 
     public static CommentBottomSheet newInstance(long videoId, int commentCount) {
         CommentBottomSheet sheet = new CommentBottomSheet();
@@ -91,31 +71,28 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.bottom_sheet_comment, container, false);
+        binding = BottomSheetCommentBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        commentRepository = new CommentRepository(requireContext());
+        CommentRepository commentRepository = new CommentRepository(requireContext());
         authRepository = new AuthRepository(requireContext());
+        viewModel = new ViewModelProvider(
+                this,
+                new CommentViewModel.Factory(videoId, commentCount, commentRepository)
+        ).get(CommentViewModel.class);
         adapter = new CommentAdapter();
 
-        tvTitle = view.findViewById(R.id.tv_title);
-        recyclerComments = view.findViewById(R.id.recycler_comments);
-        progressLoading = view.findViewById(R.id.progress_loading);
-        progressLoadMore = view.findViewById(R.id.progress_load_more);
-        tvEmpty = view.findViewById(R.id.tv_empty);
-        etComment = view.findViewById(R.id.et_comment);
-        btnSend = view.findViewById(R.id.btn_send);
-
-        updateTitle();
-        recyclerComments.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerComments.setAdapter(adapter);
-        recyclerComments.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        binding.recyclerComments.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerComments.setAdapter(adapter);
+        binding.recyclerComments.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                if (dy <= 0 || loading || !hasMore) {
+                CommentUiState state = viewModel.getUiState().getValue();
+                if (dy <= 0 || state == null || state.loading || state.loadingMore || !state.hasMore) {
                     return;
                 }
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
@@ -124,21 +101,41 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
                 }
                 int lastVisible = layoutManager.findLastVisibleItemPosition();
                 if (lastVisible >= adapter.getItemCount() - 3) {
-                    loadComments(currentPage + 1, false);
+                    viewModel.loadMore();
                 }
             }
         });
 
-        btnSend.setOnClickListener(v -> postComment());
-        etComment.setOnEditorActionListener((v, actionId, event) -> {
+        binding.btnSend.setOnClickListener(v -> sendComment());
+        binding.etComment.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
-                postComment();
+                sendComment();
                 return true;
             }
             return false;
         });
 
-        loadComments(0, true);
+        viewModel.getUiState().observe(getViewLifecycleOwner(), this::render);
+        viewModel.getLoginRequired().observe(getViewLifecycleOwner(), ignored -> {
+            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(requireContext(), LoginActivity.class));
+        });
+        viewModel.getToastMessage().observe(getViewLifecycleOwner(), message -> {
+            if ("empty_content".equals(message)) {
+                Toast.makeText(requireContext(), R.string.comment_content_empty, Toast.LENGTH_SHORT).show();
+            } else if (message != null) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
+        viewModel.getCommentPosted().observe(getViewLifecycleOwner(), newCount -> {
+            binding.etComment.setText("");
+            binding.recyclerComments.scrollToPosition(0);
+            if (postedListener != null && newCount != null) {
+                postedListener.onCommentPosted(videoId, newCount);
+            }
+        });
+
+        viewModel.loadInitial();
     }
 
     @Override
@@ -161,120 +158,48 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
         }
     }
 
-    private void updateTitle() {
-        tvTitle.setText(getString(R.string.comment_title_format, CountFormatter.format(commentCount)));
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 
-    private void loadComments(int page, boolean replace) {
-        if (loading) {
+    private void sendComment() {
+        String content = binding.etComment.getText() != null
+                ? binding.etComment.getText().toString()
+                : "";
+        viewModel.send(content, authRepository.isLoggedIn());
+    }
+
+    private void render(CommentUiState state) {
+        if (state == null || binding == null) {
             return;
         }
-        loading = true;
-        if (replace) {
-            progressLoading.setVisibility(View.VISIBLE);
-            tvEmpty.setVisibility(View.GONE);
-            recyclerComments.setVisibility(View.INVISIBLE);
+        binding.tvTitle.setText(getString(
+                R.string.comment_title_format,
+                CountFormatter.format(state.commentCount)));
+
+        adapter.submitList(state.comments);
+
+        binding.progressLoading.setVisibility(state.loading ? View.VISIBLE : View.GONE);
+        binding.progressLoadMore.setVisibility(state.loadingMore ? View.VISIBLE : View.GONE);
+        binding.btnSend.setEnabled(!state.posting);
+
+        if (state.loading) {
+            binding.tvEmpty.setVisibility(View.GONE);
+            binding.recyclerComments.setVisibility(View.INVISIBLE);
+            return;
+        }
+
+        binding.recyclerComments.setVisibility(View.VISIBLE);
+        if (state.error != null && state.comments.isEmpty()) {
+            binding.tvEmpty.setVisibility(View.VISIBLE);
+            binding.tvEmpty.setText(state.error);
+        } else if (state.isEmpty()) {
+            binding.tvEmpty.setVisibility(View.VISIBLE);
+            binding.tvEmpty.setText(R.string.comment_empty);
         } else {
-            progressLoadMore.setVisibility(View.VISIBLE);
+            binding.tvEmpty.setVisibility(View.GONE);
         }
-
-        commentRepository.getComments(videoId, page, PAGE_SIZE, new ApiCallback<CommentPage>() {
-            @Override
-            public void onSuccess(CommentPage data) {
-                if (!isAdded()) {
-                    return;
-                }
-                loading = false;
-                progressLoading.setVisibility(View.GONE);
-                progressLoadMore.setVisibility(View.GONE);
-
-                List<CommentDto> list = data.list;
-                if (replace) {
-                    adapter.submitList(list);
-                    recyclerComments.setVisibility(View.VISIBLE);
-                    if (list == null || list.isEmpty()) {
-                        tvEmpty.setVisibility(View.VISIBLE);
-                    } else {
-                        tvEmpty.setVisibility(View.GONE);
-                    }
-                } else {
-                    adapter.appendList(list);
-                }
-
-                currentPage = data.page;
-                hasMore = data.hasMore;
-            }
-
-            @Override
-            public void onError(int code, String message) {
-                if (!isAdded()) {
-                    return;
-                }
-                loading = false;
-                progressLoading.setVisibility(View.GONE);
-                progressLoadMore.setVisibility(View.GONE);
-                if (replace) {
-                    recyclerComments.setVisibility(View.VISIBLE);
-                    tvEmpty.setVisibility(View.VISIBLE);
-                    tvEmpty.setText(message != null ? message : getString(R.string.comment_load_failed));
-                } else {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-    }
-
-    private void postComment() {
-        if (posting) {
-            return;
-        }
-        if (!authRepository.isLoggedIn()) {
-            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(requireContext(), LoginActivity.class));
-            return;
-        }
-
-        String content = etComment.getText() != null ? etComment.getText().toString().trim() : "";
-        if (TextUtils.isEmpty(content)) {
-            Toast.makeText(requireContext(), R.string.comment_content_empty, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        posting = true;
-        btnSend.setEnabled(false);
-        commentRepository.postComment(videoId, content, new ApiCallback<CommentDto>() {
-            @Override
-            public void onSuccess(CommentDto data) {
-                if (!isAdded()) {
-                    return;
-                }
-                posting = false;
-                btnSend.setEnabled(true);
-                etComment.setText("");
-                adapter.prependComment(data);
-                tvEmpty.setVisibility(View.GONE);
-                recyclerComments.scrollToPosition(0);
-                commentCount += 1;
-                updateTitle();
-                if (postedListener != null) {
-                    postedListener.onCommentPosted(videoId, commentCount);
-                }
-            }
-
-            @Override
-            public void onError(int code, String message) {
-                if (!isAdded()) {
-                    return;
-                }
-                posting = false;
-                btnSend.setEnabled(true);
-                if (code == 401) {
-                    Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(requireContext(), LoginActivity.class));
-                    return;
-                }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 }
