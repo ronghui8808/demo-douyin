@@ -11,7 +11,6 @@ import android.view.ViewGroup;
 import android.view.TextureView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +23,10 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.douyin.R;
 import com.example.douyin.cache.MediaCacheManager;
 import com.example.douyin.comment.CommentBottomSheet;
+import com.example.douyin.databinding.FragmentVideoPageBinding;
+import com.example.douyin.databinding.PageProfileContentBinding;
+import com.example.douyin.databinding.PageVideoContentBinding;
+import com.example.douyin.databinding.ViewVideoOverlayBinding;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.VideoDto;
@@ -38,6 +41,7 @@ public class VideoPageFragment extends Fragment {
     private static final int PAGE_VIDEO = 0;
     private static final int PAGE_PROFILE = 1;
 
+    private FragmentVideoPageBinding binding;
     private int pagePosition;
     private VideoDto video;
     private ViewPager2 slidePager;
@@ -78,7 +82,8 @@ public class VideoPageFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_video_page, container, false);
+        binding = FragmentVideoPageBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -89,7 +94,7 @@ public class VideoPageFragment extends Fragment {
             return;
         }
 
-        slidePager = view.findViewById(R.id.pager_slide);
+        slidePager = binding.pagerSlide;
         slidePager.setOrientation(ViewPager2.ORIENTATION_HORIZONTAL);
         slidePager.setAdapter(new SlidePagerAdapter());
         slidePager.setCurrentItem(PAGE_VIDEO, false);
@@ -130,29 +135,34 @@ public class VideoPageFragment extends Fragment {
         }
     }
 
-    private void bindVideoPage(@NonNull View pageView) {
+    private void bindVideoPage(@NonNull PageVideoContentBinding videoBinding) {
         if (videoBound) {
             return;
         }
         videoBound = true;
 
-        textureView = pageView.findViewById(R.id.texture_video);
-        ivLike = pageView.findViewById(R.id.iv_like);
-        tvLikeCount = pageView.findViewById(R.id.tv_like_count);
-        tvCommentCount = pageView.findViewById(R.id.tv_comment_count);
-        tvAuthor = pageView.findViewById(R.id.tv_author);
-        tvDescription = pageView.findViewById(R.id.tv_description);
-        tvAvatarLetter = pageView.findViewById(R.id.tv_avatar_letter);
-        btnLike = pageView.findViewById(R.id.btn_like);
-        ivPauseIndicator = pageView.findViewById(R.id.iv_pause_indicator);
+        View pageView = videoBinding.getRoot();
+        ViewVideoOverlayBinding overlayBinding = videoBinding.overlay;
+
+        textureView = videoBinding.textureVideo;
+        ivLike = overlayBinding.ivLike;
+        tvLikeCount = overlayBinding.tvLikeCount;
+        tvCommentCount = overlayBinding.tvCommentCount;
+        tvAuthor = overlayBinding.tvAuthor;
+        tvDescription = overlayBinding.tvDescription;
+        tvAvatarLetter = overlayBinding.tvAvatarLetter;
+        btnLike = overlayBinding.btnLike;
+        ivPauseIndicator = videoBinding.ivPauseIndicator;
+        ivDoubleTapLike = videoBinding.ivDoubleTapLike;
 
         bindOverlay();
-        setupActions(pageView);
-        setupProfileSwipe(pageView);
-        setupAvatarEntry(pageView);
-        setupVideoTapGestures(pageView);
+        setupActions(overlayBinding);
+        setupProfileSwipe(videoBinding);
+        setupAvatarEntry(overlayBinding);
+        setupVideoTapGestures(pageView, overlayBinding.getRoot());
 
         playerController = new VideoPlayerController(textureView);
+        getViewLifecycleOwner().getLifecycle().addObserver(playerController);
         preparePlayback();
     }
 
@@ -174,9 +184,9 @@ public class VideoPageFragment extends Fragment {
         }
     }
 
-    private void setupProfileSwipe(@NonNull View pageView) {
-        ProfileSwipeLayout swipeLayout = pageView.findViewById(R.id.profile_swipe_layout);
-        if (swipeLayout == null || !hasAuthorProfile()) {
+    private void setupProfileSwipe(@NonNull PageVideoContentBinding videoBinding) {
+        ProfileSwipeLayout swipeLayout = videoBinding.profileSwipeLayout;
+        if (!hasAuthorProfile()) {
             return;
         }
         swipeLayout.setMode(ProfileSwipeLayout.Mode.VIDEO);
@@ -212,14 +222,11 @@ public class VideoPageFragment extends Fragment {
         });
     }
 
-    private void setupAvatarEntry(@NonNull View pageView) {
+    private void setupAvatarEntry(@NonNull ViewVideoOverlayBinding overlayBinding) {
         if (!hasAuthorProfile()) {
             return;
         }
-        View avatarContainer = pageView.findViewById(R.id.view_avatar);
-        if (avatarContainer == null) {
-            return;
-        }
+        View avatarContainer = overlayBinding.viewAvatar;
         View clickTarget = (View) avatarContainer.getParent();
         clickTarget.setOnClickListener(v -> openAuthorProfile());
     }
@@ -238,13 +245,7 @@ public class VideoPageFragment extends Fragment {
         slidePager.setCurrentItem(PAGE_VIDEO, true);
     }
 
-    private void setupVideoTapGestures(@NonNull View pageView) {
-        ivDoubleTapLike = pageView.findViewById(R.id.iv_double_tap_like);
-        View overlay = pageView.findViewById(R.id.overlay);
-        if (overlay == null) {
-            return;
-        }
-
+    private void setupVideoTapGestures(@NonNull View pageView, @NonNull View overlay) {
         GestureDetector detector = new GestureDetector(requireContext(),
                 new GestureDetector.SimpleOnGestureListener() {
                     @Override
@@ -376,6 +377,7 @@ public class VideoPageFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // 页面可见性：由 Fragment 显式 play；LifecycleObserver 只处理进后台强制 pause / 兜底
         if (playerController != null && playbackReady && isPageActive() && isShowingVideo() && !userPaused) {
             playerController.play();
         }
@@ -394,11 +396,14 @@ public class VideoPageFragment extends Fragment {
     @Override
     public void onDestroyView() {
         if (playerController != null) {
+            getViewLifecycleOwner().getLifecycle().removeObserver(playerController);
             playerController.release();
             playerController = null;
         }
         profileController = null;
         videoBound = false;
+        binding = null;
+        slidePager = null;
         super.onDestroyView();
     }
 
@@ -431,10 +436,10 @@ public class VideoPageFragment extends Fragment {
         tvCommentCount.setText(CountFormatter.format(video.commentCount));
     }
 
-    private void setupActions(View root) {
+    private void setupActions(@NonNull ViewVideoOverlayBinding overlayBinding) {
         btnLike.setOnClickListener(v -> onLikeClicked());
-        root.findViewById(R.id.btn_comment).setOnClickListener(v -> openComments());
-        root.findViewById(R.id.btn_share).setOnClickListener(v -> shareVideo());
+        overlayBinding.btnComment.setOnClickListener(v -> openComments());
+        overlayBinding.btnShare.setOnClickListener(v -> shareVideo());
     }
 
     private void openComments() {
@@ -504,19 +509,20 @@ public class VideoPageFragment extends Fragment {
         @Override
         public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-            View itemView;
             if (viewType == TYPE_PROFILE) {
-                itemView = inflater.inflate(R.layout.page_profile_content, parent, false);
-            } else {
-                itemView = inflater.inflate(R.layout.page_video_content, parent, false);
+                PageProfileContentBinding profileBinding =
+                        PageProfileContentBinding.inflate(inflater, parent, false);
+                return new Holder(profileBinding.getRoot(), viewType, null);
             }
-            return new Holder(itemView, viewType);
+            PageVideoContentBinding videoBinding =
+                    PageVideoContentBinding.inflate(inflater, parent, false);
+            return new Holder(videoBinding.getRoot(), viewType, videoBinding);
         }
 
         @Override
         public void onBindViewHolder(@NonNull Holder holder, int position) {
             if (holder.viewType == TYPE_VIDEO) {
-                bindVideoPage(holder.itemView);
+                bindVideoPage(holder.videoBinding);
             } else {
                 bindProfilePage(holder.itemView);
             }
@@ -537,10 +543,14 @@ public class VideoPageFragment extends Fragment {
 
         class Holder extends RecyclerView.ViewHolder {
             final int viewType;
+            @Nullable
+            final PageVideoContentBinding videoBinding;
 
-            Holder(@NonNull View itemView, int viewType) {
+            Holder(@NonNull View itemView, int viewType,
+                   @Nullable PageVideoContentBinding videoBinding) {
                 super(itemView);
                 this.viewType = viewType;
+                this.videoBinding = videoBinding;
             }
         }
     }
