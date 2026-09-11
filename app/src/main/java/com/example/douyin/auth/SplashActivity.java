@@ -23,9 +23,17 @@ public class SplashActivity extends AppCompatActivity {
     }
 
     private void routeNextScreen() {
+        TokenStore store = TokenStore.get(this);
+        if (store.isHydrated()) {
+            navigate(store.isLoggedIn());
+            return;
+        }
+        store.hydrate(() -> runOnUiThread(() -> navigate(store.isLoggedIn())));
+    }
+
+    private void navigate(boolean loggedIn) {
         AuthTrace.begin("auth_splash_route");
         try {
-            boolean loggedIn = TokenStore.get(this).isLoggedIn();
             Intent intent = loggedIn
                     ? new Intent(this, MainActivity.class)
                     : new Intent(this, LoginActivity.class);
