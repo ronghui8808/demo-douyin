@@ -1,29 +1,52 @@
 package com.example.douyin.player;
 
+import android.content.Context;
 import android.graphics.SurfaceTexture;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.view.Surface;
 import android.view.TextureView;
 
 import androidx.annotation.NonNull;
-
-import java.io.IOException;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
+import androidx.media3.exoplayer.ExoPlayer;
 
 public class VideoPlayerController implements TextureView.SurfaceTextureListener,
-        MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
-        MediaPlayer.OnVideoSizeChangedListener {
+        DefaultLifecycleObserver {
 
+    private final Context appContext;
     private final TextureView textureView;
-    private MediaPlayer mediaPlayer;
+    @Nullable
+    private ExoPlayer player;
+    @Nullable
     private String videoUrl;
     private boolean playWhenReady;
-    private boolean isPrepared;
+    private boolean lifecyclePaused;
     private int videoWidth;
     private int videoHeight;
 
+    private final Player.Listener playerListener = new Player.Listener() {
+        @Override
+        public void onVideoSizeChanged(VideoSize videoSize) {
+            videoWidth = videoSize.width;
+            videoHeight = videoSize.height;
+            applyVideoTransform();
+        }
+
+        @Override
+        public void onPlayerError(PlaybackException error) {
+            // 保持与旧实现一致：吞掉错误，由上层决定是否换源
+        }
+    };
+
     public VideoPlayerController(TextureView textureView) {
         this.textureView = textureView;
+        this.appContext = textureView.getContext().getApplicationContext();
         textureView.setSurfaceTextureListener(this);
         textureView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
             if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
@@ -41,20 +64,26 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
 
     public void play() {
         playWhenReady = true;
-        if (isPrepared && mediaPlayer != null && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
+        if (lifecyclePaused) {
+            return;
+        }
+        ensurePlayer();
+        if (player != null) {
+            player.setPlayWhenReady(true);
         }
     }
 
     public void pause() {
         playWhenReady = false;
-        if (isPrepared && mediaPlayer != null && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
+        if (player != null) {
+            player.setPlayWhenReady(false);
         }
     }
 
     public boolean isPlaying() {
-        return isPrepared && mediaPlayer != null && mediaPlayer.isPlaying();
+        return player != null
+                && player.getPlayWhenReady()
+                && player.getPlaybackState() == Player.STATE_READY;
     }
 
     public void togglePlayPause() {
@@ -67,11 +96,31 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
 
     public void release() {
         playWhenReady = false;
-        isPrepared = false;
         videoWidth = 0;
         videoHeight = 0;
         textureView.setSurfaceTextureListener(null);
         releaseInternal();
+    }
+
+    @Override
+    public void onPause(@NonNull LifecycleOwner owner) {
+        lifecyclePaused = true;
+        if (player != null) {
+            player.setPlayWhenReady(false);
+        }
+    }
+
+    @Override
+    public void onResume(@NonNull LifecycleOwner owner) {
+        lifecyclePaused = false;
+        if (playWhenReady && player != null) {
+            player.setPlayWhenReady(true);
+        }
+    }
+
+    @Override
+    public void onDestroy(@NonNull LifecycleOwner owner) {
+        release();
     }
 
     @Override
@@ -88,7 +137,9 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
 
     @Override
     public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
-        releaseInternal();
+        if (player != null) {
+            player.clearVideoSurface();
+        }
         return true;
     }
 
@@ -96,63 +147,35 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
     public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
     }
 
-    private void preparePlayer(SurfaceTexture surfaceTexture) {
-        if (videoUrl == null) {
+    private void preparePlayer(@Nullable SurfaceTexture surfaceTexture) {
+        if (videoUrl == null || surfaceTexture == null) {
             return;
         }
-        releaseInternal();
-
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setSurface(new Surface(surfaceTexture));
-        mediaPlayer.setLooping(true);
-        mediaPlayer.setOnPreparedListener(this);
-        mediaPlayer.setOnErrorListener(this);
-        mediaPlayer.setOnVideoSizeChangedListener(this);
-        try {
-            mediaPlayer.setDataSource(textureView.getContext(), Uri.parse(videoUrl));
-            mediaPlayer.prepareAsync();
-        } catch (IOException e) {
-            releaseInternal();
+        ensurePlayer();
+        if (player == null) {
+            return;
         }
+        player.setVideoSurface(new Surface(surfaceTexture));
+        player.setMediaItem(MediaItem.fromUri(Uri.parse(videoUrl)));
+        player.setRepeatMode(Player.REPEAT_MODE_ONE);
+        player.prepare();
+        player.setPlayWhenReady(playWhenReady && !lifecyclePaused);
+    }
+
+    private void ensurePlayer() {
+        if (player != null) {
+            return;
+        }
+        player = new ExoPlayer.Builder(appContext).build();
+        player.addListener(playerListener);
     }
 
     private void releaseInternal() {
-        isPrepared = false;
-        if (mediaPlayer != null) {
-            mediaPlayer.setOnPreparedListener(null);
-            mediaPlayer.setOnErrorListener(null);
-            mediaPlayer.setOnVideoSizeChangedListener(null);
-            try {
-                mediaPlayer.stop();
-            } catch (IllegalStateException ignored) {
-            }
-            mediaPlayer.release();
-            mediaPlayer = null;
+        if (player != null) {
+            player.removeListener(playerListener);
+            player.release();
+            player = null;
         }
-    }
-
-    @Override
-    public void onPrepared(MediaPlayer mp) {
-        isPrepared = true;
-        videoWidth = mp.getVideoWidth();
-        videoHeight = mp.getVideoHeight();
-        applyVideoTransform();
-        if (playWhenReady) {
-            mp.start();
-        }
-    }
-
-    @Override
-    public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-        videoWidth = width;
-        videoHeight = height;
-        applyVideoTransform();
-    }
-
-    @Override
-    public boolean onError(MediaPlayer mp, int what, int extra) {
-        isPrepared = false;
-        return true;
     }
 
     private void applyVideoTransform() {
