@@ -26,4 +26,20 @@ public class TokenStoreMemoryCacheTest {
         assertNull(cache.getToken());
         assertEquals(-1L, cache.getUserId());
     }
+
+    @Test
+    public void shouldApplyHydratedToken_neverWipeNonEmptyCacheWithEmptyDs() {
+        assertFalse(TokenStore.shouldApplyHydratedToken("legacy-token", null));
+        assertFalse(TokenStore.shouldApplyHydratedToken("legacy-token", ""));
+        assertFalse(TokenStore.shouldApplyHydratedToken("saved-token", null));
+    }
+
+    @Test
+    public void shouldApplyHydratedToken_appliesWhenDsHasTokenOrCacheEmpty() {
+        assertTrue(TokenStore.shouldApplyHydratedToken(null, "from-ds"));
+        assertTrue(TokenStore.shouldApplyHydratedToken("", "from-ds"));
+        assertTrue(TokenStore.shouldApplyHydratedToken(null, null));
+        assertTrue(TokenStore.shouldApplyHydratedToken("", ""));
+        assertTrue(TokenStore.shouldApplyHydratedToken("old", "from-ds"));
+    }
 }

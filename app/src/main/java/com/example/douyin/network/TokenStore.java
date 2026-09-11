@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.datastore.preferences.core.MutablePreferences;
 import androidx.datastore.preferences.core.Preferences;
 import androidx.datastore.preferences.core.PreferencesFactory;
@@ -46,25 +47,41 @@ public final class TokenStore {
         return instance;
     }
 
-    /** 异步加载 DataStore（及旧 SharedPreferences 迁移）到内存缓存。 */
+    /**
+     * 异步加载 DataStore（及旧 SharedPreferences 迁移）到内存缓存。
+     * 有 legacy token 时先 {@code updateDataAsync} 迁移，用其结果填充缓存后再清 legacy；
+     * 无 legacy 时读 DataStore，经 {@link #shouldApplyHydratedToken} 策略写入缓存，避免空 prefs 覆盖有效内存 token。
+     */
     public void hydrate(@Nullable Runnable onReady) {
-        migrateLegacyIfNeeded();
+        SharedPreferences legacy = appContext.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE);
+        String legacyToken = legacy.getString("token", null);
+
+        if (!TextUtils.isEmpty(legacyToken)) {
+            long legacyUserId = legacy.getLong("user_id", -1L);
+            // 迁移完成前拦截器即可读到 token
+            cache.set(legacyToken, legacyUserId);
+            dataStore.updateDataAsync(prefsIn -> {
+                MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
+                String existing = prefsIn.get(KEY_TOKEN);
+                if (TextUtils.isEmpty(existing)) {
+                    mutablePreferences.set(KEY_TOKEN, legacyToken);
+                    mutablePreferences.set(KEY_USER_ID, legacyUserId);
+                }
+                return Single.just(mutablePreferences);
+            }).subscribe(prefs -> {
+                applyHydratedPreferences(prefs);
+                legacy.edit().clear().apply();
+                finishHydrate(onReady);
+            }, error -> finishHydrate(onReady));
+            return;
+        }
+
         dataStore.data().firstOrError()
                 .onErrorReturnItem(PreferencesFactory.createEmpty())
                 .subscribe(prefs -> {
-                    String token = prefs.get(KEY_TOKEN);
-                    Long userId = prefs.get(KEY_USER_ID);
-                    cache.set(token, userId != null ? userId : -1L);
-                    hydrated.set(true);
-                    if (onReady != null) {
-                        onReady.run();
-                    }
-                }, error -> {
-                    hydrated.set(true);
-                    if (onReady != null) {
-                        onReady.run();
-                    }
-                });
+                    applyHydratedPreferences(prefs);
+                    finishHydrate(onReady);
+                }, error -> finishHydrate(onReady));
     }
 
     public boolean isHydrated() {
@@ -104,19 +121,32 @@ public final class TokenStore {
         }).subscribe(p -> {}, e -> {});
     }
 
-    private void migrateLegacyIfNeeded() {
-        SharedPreferences legacy = appContext.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE);
-        String legacyToken = legacy.getString("token", null);
-        if (TextUtils.isEmpty(legacyToken)) {
+    /**
+     * Hydrate 写缓存策略：DataStore 有非空 token 时写入；DS 为空时仅当内存也为空才写入（避免擦掉 legacy / 并发 saveToken）。
+     */
+    @VisibleForTesting
+    static boolean shouldApplyHydratedToken(@Nullable String cacheToken, @Nullable String dsToken) {
+        boolean cacheHas = cacheToken != null && !cacheToken.isEmpty();
+        boolean dsHas = dsToken != null && !dsToken.isEmpty();
+        if (dsHas) {
+            return true;
+        }
+        return !cacheHas;
+    }
+
+    private void applyHydratedPreferences(Preferences prefs) {
+        String dsToken = prefs.get(KEY_TOKEN);
+        if (!shouldApplyHydratedToken(cache.getToken(), dsToken)) {
             return;
         }
-        long legacyUserId = legacy.getLong("user_id", -1L);
-        cache.set(legacyToken, legacyUserId);
-        dataStore.updateDataAsync(prefsIn -> {
-            MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
-            mutablePreferences.set(KEY_TOKEN, legacyToken);
-            mutablePreferences.set(KEY_USER_ID, legacyUserId);
-            return Single.just(mutablePreferences);
-        }).subscribe(p -> legacy.edit().clear().apply(), e -> {});
+        Long userId = prefs.get(KEY_USER_ID);
+        cache.set(dsToken, userId != null ? userId : -1L);
+    }
+
+    private void finishHydrate(@Nullable Runnable onReady) {
+        hydrated.set(true);
+        if (onReady != null) {
+            onReady.run();
+        }
     }
 }
