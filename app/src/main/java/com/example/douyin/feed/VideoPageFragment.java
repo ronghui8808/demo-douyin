@@ -273,7 +273,7 @@ public class VideoPageFragment extends Fragment {
             return;
         }
         playerController.togglePlayPause();
-        userPaused = !playerController.isPlaying();
+        userPaused = !playerController.isPlayRequested();
         updatePauseIndicator();
     }
 
@@ -283,7 +283,7 @@ public class VideoPageFragment extends Fragment {
         }
         boolean show = playerController != null
                 && playbackReady
-                && !playerController.isPlaying()
+                && !playerController.isPlayRequested()
                 && isShowingVideo()
                 && isPageActive()
                 && isResumed();

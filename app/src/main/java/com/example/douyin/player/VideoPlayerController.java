@@ -80,14 +80,16 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
         }
     }
 
-    public boolean isPlaying() {
-        return player != null
-                && player.getPlayWhenReady()
-                && player.getPlaybackState() == Player.STATE_READY;
+    /**
+     * 播放意图，而非实时播放状态：ExoPlayer 从 prepare 到 STATE_READY 之间是缓冲态，
+     * 用实时状态驱动 UI 会在缓冲期误判为暂停。
+     */
+    public boolean isPlayRequested() {
+        return playWhenReady;
     }
 
     public void togglePlayPause() {
-        if (isPlaying()) {
+        if (playWhenReady) {
             pause();
         } else {
             play();
