@@ -5,20 +5,34 @@ import android.content.SharedPreferences;
 import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
+import androidx.datastore.preferences.core.MutablePreferences;
+import androidx.datastore.preferences.core.Preferences;
+import androidx.datastore.preferences.core.PreferencesFactory;
+import androidx.datastore.preferences.core.PreferencesKeys;
+import androidx.datastore.preferences.rxjava3.RxPreferenceDataStoreBuilder;
+import androidx.datastore.rxjava3.RxDataStore;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import io.reactivex.rxjava3.core.Single;
 
 public final class TokenStore {
 
-    private static final String PREFS_NAME = "douyin_auth";
-    private static final String KEY_TOKEN = "token";
-    private static final String KEY_USER_ID = "user_id";
+    private static final String STORE_NAME = "douyin_auth";
+    private static final String LEGACY_PREFS = "douyin_auth";
+    private static final Preferences.Key<String> KEY_TOKEN = PreferencesKeys.stringKey("token");
+    private static final Preferences.Key<Long> KEY_USER_ID = PreferencesKeys.longKey("user_id");
 
     private static volatile TokenStore instance;
 
-    private final SharedPreferences prefs;
+    private final Context appContext;
+    private final RxDataStore<Preferences> dataStore;
+    private final TokenMemoryCache cache = new TokenMemoryCache();
+    private final AtomicBoolean hydrated = new AtomicBoolean(false);
 
     private TokenStore(Context context) {
-        prefs = context.getApplicationContext()
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        dataStore = new RxPreferenceDataStoreBuilder(appContext, STORE_NAME).build();
     }
 
     public static TokenStore get(Context context) {
@@ -32,30 +46,77 @@ public final class TokenStore {
         return instance;
     }
 
+    /** 异步加载 DataStore（及旧 SharedPreferences 迁移）到内存缓存。 */
+    public void hydrate(@Nullable Runnable onReady) {
+        migrateLegacyIfNeeded();
+        dataStore.data().firstOrError()
+                .onErrorReturnItem(PreferencesFactory.createEmpty())
+                .subscribe(prefs -> {
+                    String token = prefs.get(KEY_TOKEN);
+                    Long userId = prefs.get(KEY_USER_ID);
+                    cache.set(token, userId != null ? userId : -1L);
+                    hydrated.set(true);
+                    if (onReady != null) {
+                        onReady.run();
+                    }
+                }, error -> {
+                    hydrated.set(true);
+                    if (onReady != null) {
+                        onReady.run();
+                    }
+                });
+    }
+
+    public boolean isHydrated() {
+        return hydrated.get();
+    }
+
     public void saveToken(String token, long userId) {
-        prefs.edit()
-                .putString(KEY_TOKEN, token)
-                .putLong(KEY_USER_ID, userId)
-                .apply();
+        cache.set(token, userId);
+        dataStore.updateDataAsync(prefsIn -> {
+            MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
+            mutablePreferences.set(KEY_TOKEN, token);
+            mutablePreferences.set(KEY_USER_ID, userId);
+            return Single.just(mutablePreferences);
+        }).subscribe(p -> {}, e -> {});
     }
 
     @Nullable
     public String getToken() {
-        return prefs.getString(KEY_TOKEN, null);
+        return cache.getToken();
     }
 
     public long getUserId() {
-        return prefs.getLong(KEY_USER_ID, -1L);
+        return cache.getUserId();
     }
 
     public boolean isLoggedIn() {
-        return !TextUtils.isEmpty(getToken());
+        return cache.isLoggedIn();
     }
 
     public void clear() {
-        prefs.edit()
-                .remove(KEY_TOKEN)
-                .remove(KEY_USER_ID)
-                .apply();
+        cache.clear();
+        dataStore.updateDataAsync(prefsIn -> {
+            MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
+            mutablePreferences.remove(KEY_TOKEN);
+            mutablePreferences.remove(KEY_USER_ID);
+            return Single.just(mutablePreferences);
+        }).subscribe(p -> {}, e -> {});
+    }
+
+    private void migrateLegacyIfNeeded() {
+        SharedPreferences legacy = appContext.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE);
+        String legacyToken = legacy.getString("token", null);
+        if (TextUtils.isEmpty(legacyToken)) {
+            return;
+        }
+        long legacyUserId = legacy.getLong("user_id", -1L);
+        cache.set(legacyToken, legacyUserId);
+        dataStore.updateDataAsync(prefsIn -> {
+            MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
+            mutablePreferences.set(KEY_TOKEN, legacyToken);
+            mutablePreferences.set(KEY_USER_ID, legacyUserId);
+            return Single.just(mutablePreferences);
+        }).subscribe(p -> legacy.edit().clear().apply(), e -> {});
     }
 }
