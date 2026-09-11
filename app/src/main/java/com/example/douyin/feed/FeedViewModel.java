@@ -53,8 +53,15 @@ public class FeedViewModel extends ViewModel {
     }
 
     public void toggleLike(long videoId, boolean loggedIn) {
+        toggleLike(videoId, loggedIn, null);
+    }
+
+    public void toggleLike(long videoId, boolean loggedIn, ApiCallback<LikeResult> callback) {
         if (!loggedIn) {
             loginRequired.setValue("need_login");
+            if (callback != null) {
+                callback.onError(401, "need_login");
+            }
             return;
         }
         dataSource.toggleLike(videoId, new ApiCallback<LikeResult>() {
@@ -63,11 +70,16 @@ public class FeedViewModel extends ViewModel {
                 if (data != null) {
                     updateLike(videoId, data.isLiked, data.likeCount);
                 }
+                if (callback != null) {
+                    callback.onSuccess(data);
+                }
             }
 
             @Override
             public void onError(int code, String message) {
-                // 保持现行为：错误由页面 Toast；此处可扩展 error event
+                if (callback != null) {
+                    callback.onError(code, message);
+                }
             }
         });
     }

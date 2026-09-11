@@ -33,7 +33,6 @@ public class FeedFragment extends Fragment {
     private FragmentFeedBinding binding;
     private FeedViewModel viewModel;
     private FeedPagerAdapter pagerAdapter;
-    private VideoRepository videoRepository;
     private AuthRepository authRepository;
     private int activePosition;
     private boolean contentBound;
@@ -50,7 +49,7 @@ public class FeedFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        videoRepository = new VideoRepository(requireContext());
+        VideoRepository videoRepository = new VideoRepository(requireContext());
         authRepository = new AuthRepository(requireContext());
         viewModel = new ViewModelProvider(this, new FeedViewModel.Factory(videoRepository, FEED_PAGE_SIZE))
                 .get(FeedViewModel.class);
@@ -121,16 +120,7 @@ public class FeedFragment extends Fragment {
     }
 
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
-        if (!authRepository.isLoggedIn()) {
-            viewModel.toggleLike(videoId, false);
-            if (callback != null) {
-                callback.onError(401, getString(R.string.login_required));
-            }
-            return;
-        }
-        // Logged-in: keep ApiCallback for VideoPageFragment Toast/UI.
-        // FeedViewModel.toggleLike has no callback; sync LiveData via onVideoLikeChanged.
-        videoRepository.toggleLike(videoId, callback);
+        viewModel.toggleLike(videoId, authRepository.isLoggedIn(), callback);
     }
 
     private void render(FeedUiState state) {
