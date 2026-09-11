@@ -5,21 +5,20 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
 import com.example.douyin.cache.MediaCacheManager;
+import com.example.douyin.databinding.FragmentFeedBinding;
 import com.example.douyin.network.ApiCallback;
-import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.VideoDto;
 import com.example.douyin.repository.AuthRepository;
@@ -31,21 +30,21 @@ public class FeedFragment extends Fragment {
 
     private static final int FEED_PAGE_SIZE = 20;
 
-    private ViewPager2 viewPager;
-    private ProgressBar progressLoading;
-    private TextView tvEmpty;
-    private TextView tvError;
+    private FragmentFeedBinding binding;
+    private FeedViewModel viewModel;
     private FeedPagerAdapter pagerAdapter;
     private VideoRepository videoRepository;
     private AuthRepository authRepository;
     private int activePosition;
+    private boolean contentBound;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_feed, container, false);
+        binding = FragmentFeedBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -53,23 +52,20 @@ public class FeedFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         videoRepository = new VideoRepository(requireContext());
         authRepository = new AuthRepository(requireContext());
-
-        viewPager = view.findViewById(R.id.view_pager);
-        progressLoading = view.findViewById(R.id.progress_loading);
-        tvEmpty = view.findViewById(R.id.tv_empty);
-        tvError = view.findViewById(R.id.tv_error);
+        viewModel = new ViewModelProvider(this, new FeedViewModel.Factory(videoRepository, FEED_PAGE_SIZE))
+                .get(FeedViewModel.class);
 
         pagerAdapter = new FeedPagerAdapter(this);
-        viewPager.setAdapter(pagerAdapter);
-        viewPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
-        viewPager.setOffscreenPageLimit(1);
+        binding.viewPager.setAdapter(pagerAdapter);
+        binding.viewPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
+        binding.viewPager.setOffscreenPageLimit(1);
 
-        RecyclerView recyclerView = (RecyclerView) viewPager.getChildAt(0);
+        RecyclerView recyclerView = (RecyclerView) binding.viewPager.getChildAt(0);
         if (recyclerView != null) {
             recyclerView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         }
 
-        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        binding.viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 activePosition = position;
@@ -77,8 +73,26 @@ public class FeedFragment extends Fragment {
             }
         });
 
-        tvError.setOnClickListener(v -> loadFeed());
-        loadFeed();
+        viewModel.getUiState().observe(getViewLifecycleOwner(), this::render);
+        viewModel.getLoginRequired().observe(getViewLifecycleOwner(), msg -> {
+            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(requireContext(), LoginActivity.class));
+        });
+
+        binding.tvError.setOnClickListener(v -> viewModel.loadFeed());
+
+        // ViewModel survives rotation; only fetch when there is no retained list/error UI.
+        FeedUiState existing = viewModel.getUiState().getValue();
+        if (existing == null || (existing.videos.isEmpty() && existing.errorMessage == null)) {
+            viewModel.loadFeed();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+        contentBound = false;
     }
 
     public boolean isActivePage(int position) {
@@ -90,62 +104,83 @@ public class FeedFragment extends Fragment {
     }
 
     public void onVideoLikeChanged(long videoId, boolean isLiked, int likeCount) {
+        // Local adapter update avoids ViewPager2 full refresh flicker.
         pagerAdapter.updateLike(videoId, isLiked, likeCount);
+        viewModel.updateLike(videoId, isLiked, likeCount);
     }
 
     public void onVideoCommentChanged(long videoId, int commentCount) {
         pagerAdapter.updateCommentCount(videoId, commentCount);
+        viewModel.updateCommentCount(videoId, commentCount);
     }
 
     public void refreshFeed() {
-        if (isAdded()) {
-            loadFeed();
+        if (isAdded() && viewModel != null) {
+            viewModel.loadFeed();
         }
     }
 
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
         if (!authRepository.isLoggedIn()) {
-            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(requireContext(), LoginActivity.class));
-            callback.onError(401, getString(R.string.login_required));
+            viewModel.toggleLike(videoId, false);
+            if (callback != null) {
+                callback.onError(401, getString(R.string.login_required));
+            }
             return;
         }
+        // Logged-in: keep ApiCallback for VideoPageFragment Toast/UI.
+        // FeedViewModel.toggleLike has no callback; sync LiveData via onVideoLikeChanged.
         videoRepository.toggleLike(videoId, callback);
     }
 
-    private void loadFeed() {
-        showLoading();
-        videoRepository.getFeed(0, FEED_PAGE_SIZE, new ApiCallback<FeedPage>() {
-            @Override
-            public void onSuccess(FeedPage data) {
-                if (!isAdded()) {
-                    return;
-                }
-                List<VideoDto> list = data.list;
-                if (list == null || list.isEmpty()) {
-                    showEmpty();
-                    return;
-                }
-                pagerAdapter.submitList(list);
-                viewPager.setVisibility(View.VISIBLE);
-                progressLoading.setVisibility(View.GONE);
-                tvEmpty.setVisibility(View.GONE);
-                tvError.setVisibility(View.GONE);
-                activePosition = 0;
-                prefetchAround(0);
-            }
+    private void render(FeedUiState state) {
+        if (binding == null) {
+            return;
+        }
+        if (state.loading) {
+            contentBound = false;
+            showLoading();
+            return;
+        }
+        if (state.errorMessage != null) {
+            contentBound = false;
+            showError(state.errorMessage);
+            return;
+        }
+        if (state.isEmpty()) {
+            contentBound = false;
+            showEmpty();
+            return;
+        }
 
-            @Override
-            public void onError(int code, String message) {
-                if (!isAdded()) {
-                    return;
-                }
-                showError(message);
-            }
-        });
+        if (shouldReplaceList(state.videos)) {
+            pagerAdapter.submitList(state.videos);
+            activePosition = 0;
+            binding.viewPager.setCurrentItem(0, false);
+            contentBound = true;
+            showContent();
+            prefetchAround(0);
+        } else {
+            // Like/comment LiveData sync: do not submitList (avoids flicker).
+            showContent();
+        }
+    }
+
+    private boolean shouldReplaceList(List<VideoDto> videos) {
+        if (!contentBound || pagerAdapter.getItemCount() != videos.size()) {
+            return true;
+        }
+        if (videos.isEmpty()) {
+            return true;
+        }
+        VideoDto firstBound = pagerAdapter.getVideo(0);
+        return firstBound == null || firstBound.id != videos.get(0).id;
     }
 
     private void prefetchAround(int position) {
+        if (!isAdded()) {
+            return;
+        }
         MediaCacheManager cacheManager = MediaCacheManager.get(requireContext());
         prefetchAt(cacheManager, position);
         prefetchAt(cacheManager, position + 1);
@@ -164,24 +199,31 @@ public class FeedFragment extends Fragment {
     }
 
     private void showLoading() {
-        viewPager.setVisibility(View.GONE);
-        tvEmpty.setVisibility(View.GONE);
-        tvError.setVisibility(View.GONE);
-        progressLoading.setVisibility(View.VISIBLE);
+        binding.viewPager.setVisibility(View.GONE);
+        binding.tvEmpty.setVisibility(View.GONE);
+        binding.tvError.setVisibility(View.GONE);
+        binding.progressLoading.setVisibility(View.VISIBLE);
     }
 
     private void showEmpty() {
-        viewPager.setVisibility(View.GONE);
-        progressLoading.setVisibility(View.GONE);
-        tvError.setVisibility(View.GONE);
-        tvEmpty.setVisibility(View.VISIBLE);
+        binding.viewPager.setVisibility(View.GONE);
+        binding.progressLoading.setVisibility(View.GONE);
+        binding.tvError.setVisibility(View.GONE);
+        binding.tvEmpty.setVisibility(View.VISIBLE);
     }
 
     private void showError(String message) {
-        viewPager.setVisibility(View.GONE);
-        progressLoading.setVisibility(View.GONE);
-        tvEmpty.setVisibility(View.GONE);
-        tvError.setVisibility(View.VISIBLE);
-        tvError.setText(message != null ? message : getString(R.string.feed_load_failed));
+        binding.viewPager.setVisibility(View.GONE);
+        binding.progressLoading.setVisibility(View.GONE);
+        binding.tvEmpty.setVisibility(View.GONE);
+        binding.tvError.setVisibility(View.VISIBLE);
+        binding.tvError.setText(message != null ? message : getString(R.string.feed_load_failed));
+    }
+
+    private void showContent() {
+        binding.viewPager.setVisibility(View.VISIBLE);
+        binding.progressLoading.setVisibility(View.GONE);
+        binding.tvEmpty.setVisibility(View.GONE);
+        binding.tvError.setVisibility(View.GONE);
     }
 }
