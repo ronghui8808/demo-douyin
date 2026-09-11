@@ -2,9 +2,7 @@ package com.example.douyin.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.View;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -13,32 +11,24 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.douyin.BuildConfig;
 import com.example.douyin.MainActivity;
 import com.example.douyin.R;
-import com.example.douyin.network.ApiCallback;
-import com.example.douyin.network.model.LoginResult;
+import com.example.douyin.databinding.ActivityLoginBinding;
 import com.example.douyin.repository.AuthRepository;
-import com.example.douyin.trace.AuthTrace;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private AuthRepository authRepository;
-    private TextInputLayout tilUsername;
-    private TextInputLayout tilPassword;
-    private TextInputEditText etUsername;
-    private TextInputEditText etPassword;
-    private MaterialButton btnLogin;
-    private ProgressBar progressLogin;
+    private ActivityLoginBinding binding;
+    private LoginViewModel viewModel;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        authRepository = new AuthRepository(this);
+        AuthRepository authRepository = new AuthRepository(this);
 
         if (authRepository.isLoggedIn()) {
             goToMain();
@@ -46,93 +36,67 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        setContentView(R.layout.activity_login);
+        binding = ActivityLoginBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
         setupWindowInsets();
-        bindViews();
+
+        viewModel = new ViewModelProvider(this,
+                new LoginViewModel.Factory(authRepository, getApplication()))
+                .get(LoginViewModel.class);
+
         setupActions();
+        observeViewModel();
     }
 
     private void setupWindowInsets() {
-        View root = findViewById(R.id.login_root);
-        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (view, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
     }
 
-    private void bindViews() {
-        tilUsername = findViewById(R.id.til_username);
-        tilPassword = findViewById(R.id.til_password);
-        etUsername = findViewById(R.id.et_username);
-        etPassword = findViewById(R.id.et_password);
-        btnLogin = findViewById(R.id.btn_login);
-        progressLogin = findViewById(R.id.progress_login);
-    }
-
     private void setupActions() {
-        btnLogin.setOnClickListener(v -> attemptLogin());
-        findViewById(R.id.tv_go_register).setOnClickListener(v ->
+        binding.btnLogin.setOnClickListener(v ->
+                viewModel.login(getText(binding.etUsername), getText(binding.etPassword)));
+
+        binding.tvGoRegister.setOnClickListener(v ->
                 startActivity(new Intent(this, RegisterActivity.class)));
 
-        MaterialButton skipButton = findViewById(R.id.btn_skip_login);
         if (BuildConfig.DEBUG) {
-            skipButton.setVisibility(View.VISIBLE);
-            skipButton.setOnClickListener(v -> loginDemoAccount());
-        }
-    }
-
-    private void attemptLogin() {
-        AuthTrace.begin("auth_login_click");
-        try {
-            tilUsername.setError(null);
-            tilPassword.setError(null);
-
-            String username = getText(etUsername);
-            String password = getText(etPassword);
-
-            if (TextUtils.isEmpty(username)) {
-                tilUsername.setError(getString(R.string.error_username_empty));
-                return;
-            }
-            if (TextUtils.isEmpty(password)) {
-                tilPassword.setError(getString(R.string.error_password_empty));
-                return;
-            }
-            if (password.length() < 6) {
-                tilPassword.setError(getString(R.string.error_password_short));
-                return;
-            }
-
-            setLoading(true);
-            authRepository.login(username, password, new ApiCallback<LoginResult>() {
-                @Override
-                public void onSuccess(LoginResult data) {
-                    setLoading(false);
-                    Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_SHORT).show();
-                    goToMain();
-                }
-                @Override
-                public void onError(int code, String message) {
-                    setLoading(false);
-                    Toast.makeText(LoginActivity.this, message, Toast.LENGTH_SHORT).show();
-                }
+            binding.btnSkipLogin.setVisibility(View.VISIBLE);
+            binding.btnSkipLogin.setOnClickListener(v -> {
+                binding.etUsername.setText("demo");
+                binding.etPassword.setText("123456");
+                viewModel.loginDemo();
             });
-        } finally {
-            AuthTrace.end();
         }
     }
 
-    private void loginDemoAccount() {
-        etUsername.setText("demo");
-        etPassword.setText("123456");
-        attemptLogin();
+    private void observeViewModel() {
+        viewModel.getUiState().observe(this, this::render);
+        viewModel.getNavigateMain().observe(this, ignored -> {
+            Toast.makeText(this, R.string.login_success, Toast.LENGTH_SHORT).show();
+            goToMain();
+        });
+    }
+
+    private void render(LoginUiState state) {
+        if (state == null) {
+            return;
+        }
+        binding.tilUsername.setError(state.usernameError);
+        binding.tilPassword.setError(state.passwordError);
+        setLoading(state.loading);
+        if (state.toastMessage != null) {
+            Toast.makeText(this, state.toastMessage, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setLoading(boolean loading) {
-        btnLogin.setEnabled(!loading);
-        btnLogin.setText(loading ? "" : getString(R.string.action_login));
-        progressLogin.setVisibility(loading ? View.VISIBLE : View.GONE);
+        binding.btnLogin.setEnabled(!loading);
+        binding.btnLogin.setText(loading ? "" : getString(R.string.action_login));
+        binding.progressLogin.setVisibility(loading ? View.VISIBLE : View.GONE);
     }
 
     private void goToMain() {
