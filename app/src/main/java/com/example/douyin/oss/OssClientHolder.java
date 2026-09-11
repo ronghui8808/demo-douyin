@@ -7,6 +7,13 @@ import com.alibaba.sdk.android.oss.common.auth.OSSPlainTextAKSKCredentialProvide
 
 import android.content.Context;
 
+/**
+ * OSS 客户端单例。
+ * <p>
+ * Demo 阶段用 {@link OSSPlainTextAKSKCredentialProvider} + BuildConfig 明文 AK/SK，便于本地联调。
+ * 正确做法：服务端用主账号/RAM 换取 STS 临时凭证（AccessKeyId / AccessKeySecret / SecurityToken），
+ * 客户端用 STS 凭证上传；永久密钥不下发 APK，避免反编译泄露。
+ */
 public final class OssClientHolder {
 
     private static OSS client;
@@ -25,6 +32,7 @@ public final class OssClientHolder {
             configuration.setSocketTimeout(15_000);
             configuration.setMaxConcurrentRequest(3);
             configuration.setMaxErrorRetry(2);
+            // Demo only：明文 AK/SK。生产应改为 STS 临时凭证（见类注释）。
             OSSPlainTextAKSKCredentialProvider provider =
                     new OSSPlainTextAKSKCredentialProvider(config.accessKeyId, config.accessKeySecret);
             client = new OSSClient(

@@ -4,6 +4,10 @@ import android.text.TextUtils;
 
 import com.example.douyin.BuildConfig;
 
+/**
+ * OSS 配置来自 BuildConfig（local.properties / gradle 注入）。
+ * Demo 可接受；生产勿把长期 AccessKey 打进客户端，应由服务端签发 STS 临时凭证。
+ */
 public final class OssConfig {
 
     private static OssConfig instance;

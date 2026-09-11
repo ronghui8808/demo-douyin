@@ -133,6 +133,7 @@ public final class MediaCacheManager {
         }
 
         File cacheDir = type == CacheType.VIDEO ? videoCacheDir : imageCacheDir;
+        // 先写 .tmp 再 rename：下载中断不会留下半截正式文件被 getCachedFile 当成有效命中
         File tempFile = new File(cacheDir, cacheKey(url) + ".tmp");
         File targetFile = new File(cacheDir, cacheKey(url) + extensionForUrl(url, type));
 

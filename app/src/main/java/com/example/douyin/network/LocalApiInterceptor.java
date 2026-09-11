@@ -13,6 +13,12 @@ import okhttp3.Protocol;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
+/**
+ * 拦截 {@code https://app.local/}，在进程内路由到 Local*Service，并构造 HTTP 语义响应。
+ * <p>
+ * 边界：能验证 path/method/状态码/JSON 契约与 Repository 调用链，但没有真实网络的超时、重试、弱网抖动；
+ * 切真后端后这些仍需单独测。
+ */
 public class LocalApiInterceptor implements Interceptor {
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
