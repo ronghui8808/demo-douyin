@@ -1,175 +1,173 @@
-# 绑定手机号 + 手机验证码登录 设计说明
+# 手机号验证码注册 / 登录 设计说明
 
 **日期：** 2026-09-16  
-**状态：** 已评审（待实现计划）  
-**范围：** 本轮只做账号手机号强制绑定与手机验证码登录；朋友/消息页另立项。
+**状态：** 已修订（待确认）  
+**范围：** 账号体系改为「仅手机号 + 验证码」注册与登录；朋友/消息页另立项。
+
+## 修订说明（相对上一版）
+
+- **去掉**账号密码登录与密码注册表单。
+- **注册**改为：手机号 + 验证码 + 昵称 → 开户时即写入 `phone`，成功后直接进主页。
+- **登录**仅保留手机验证码；未注册号提示先注册（不自动开户）。
+- **绑号页**仅服务存量无 `phone` 的旧账号（Room 迁移后）；新用户不再走绑号闸门。
 
 ## 背景
 
-当前 App 仅支持用户名密码注册/登录；`UserEntity` 无 `phone` 字段；底栏「朋友」「消息」仍为占位。本设计落地账号侧手机号能力，并为日后真实短信 SDK 预留接口形状。
+当前 App 仅支持用户名密码注册/登录；`UserEntity` 无 `phone` 字段。本设计将鉴权切换为手机验证码，并为日后真实短信 SDK 预留接口形状。
 
 ## 目标
 
-1. 用户必须绑定手机号后才能进入 `MainActivity`。
-2. 登录页支持「账号密码」与「手机验证码」两种方式。
-3. 短信发送/校验先走本地 `MockSmsGateway`；业务 API 路径与 DTO 按真实短信风格设计，替换网关实现时无需改调用方。
+1. 登录、注册均只使用手机号 + 短信验证码（Mock 可替换）。
+2. 新用户注册成功即已绑定手机号，可直接进入 `MainActivity`。
+3. 存量无手机号用户：强制进入绑号页，完成后才能进主页。
+4. `SmsGateway` 抽象；业务 API 形状贴近真实短信，替换实现时调用方不变。
 
 ## 非目标（本轮不做）
 
+- 账号密码登录 / 密码注册 UI
 - 改绑 / 解绑手机号
-- 接入真实短信 SDK / 运营商
-- 验证码登录自动注册开户
+- 接入真实短信 SDK
+- 验证码登录自动注册（登录与注册分离）
 - 朋友页、消息/私信
-- 手机号 + 密码登录（无验证码）
 
 ## 方案选型
 
 采用 **短信网关抽象（SmsGateway）**：
 
 - `MockSmsGateway`：内存验证码、固定码 `123456`、60s 冷却、场景隔离
-- `LocalAuthService` 负责绑号写库、手机登录发 token、唯一性校验
-- UI 经 `AuthRepository` → `DouyinApi` → `LocalApiDispatcher` 调用，与现有 LocalApi 架构一致
+- `LocalAuthService` 负责注册开户、手机登录、存量绑号、唯一性校验
+- UI 经 `AuthRepository` → `DouyinApi` → `LocalApiDispatcher`，与现有 LocalApi 一致
 
-## 产品流程与闸门
+## 产品流程
 
-### 入口
+### 登录（`LoginActivity`）
 
-1. **登录页**：两个 Tab ——「账号密码」｜「手机验证码」
-2. **注册成功后**：不进主页，直接进入绑号页
-3. **账号密码登录成功但未绑号**：进入绑号页（不可返回主页）
-4. **手机验证码登录**：仅已绑定该手机号的账号可登录；未注册/未绑定 → 提示先注册并绑定
-5. **个人页**：展示脱敏手机号（如 `138****8000`）；无改绑入口
+- 仅手机号 + 验证码 +「登录」；链到注册页
+- 校验 `scene=login` 验证码 → 按 `phone` 查用户
+  - 存在 → 发 token → Main（若无 phone 则不应出现；存量异常走绑号）
+  - 不存在 → 「该手机号未注册，请先注册」
 
-### 强制闸门
+### 注册（`RegisterActivity`）
 
-路由决策（可抽纯函数便于单测）：
+- 手机号 + 验证码 + 昵称（必填或默认「用户」+ 后四位）
+- 发码 `scene=register`：若号已被占用 → 「该手机号已注册，请直接登录」
+- 校验通过 → 创建用户（`phone` 已设）→ token → **直接 Main**（不经绑号页）
+- `username`：内部使用手机号（或 `p_` + 手机号），保证唯一；不再向用户展示「用户名」字段
+- `passwordHash`：新用户置空或固定占位；UI 不再收集密码
+
+### 存量绑号（`BindPhoneActivity`）
+
+- 仅当：已登录且 `me.phone` 为空（旧数据迁移）
+- 发码 `scene=bind`（需登录）→ 校验 → 写入 `phone` → Main
+- 无「跳过」；Back 不进入 Main
+
+### 个人页
+
+- 展示脱敏手机号；无改绑入口
+
+### 路由闸门
 
 | token | phone | 去向 |
 |-------|-------|------|
 | 无 | — | `LoginActivity` |
-| 有 | 空 | `BindPhoneActivity` |
+| 有 | 空 | `BindPhoneActivity`（存量） |
 | 有 | 非空 | `MainActivity` |
 
-规则：
-
-- `Splash` / 登录 / 注册成功后：`GET me`，若 `phone` 为空 → `BindPhoneActivity`，并清理回退栈，Back 不进入 Main
-- 绑号成功 → `MainActivity`，清理登录/绑号栈
-- 冷启动已有 token：hydrate 后同样检查 `phone`
+新用户注册/登录成功后 `phone` 必有值，正常只走 Login ↔ Main。
 
 ### 校验与验证码规则
 
 - 大陆手机号：11 位，以 `1` 开头
-- 一号一账号：已被其他用户绑定则绑号失败
-- 验证码：6 位数字；有效期 5 分钟；重发冷却 60 秒
-- Mock 固定验证码：`123456`；DEBUG 下发送成功可 Toast「验证码：123456」
-- 场景码：`bind` / `login`，同号不同场景互不串码
+- 一号一账号（`phone` 唯一）
+- 验证码：6 位；5 分钟有效；60s 重发冷却
+- Mock 固定 `123456`；DEBUG 发送成功可 Toast 展示
+- 场景：`register` / `login` / `bind`，同号不同场景互不串码
 
 ## 数据模型
 
-### User
-
-在 `UserEntity`、`UserDto`、`UserProfileDto` 增加：
-
-- `phone`：`String`，可空；数据库唯一索引（允许多个 `null` 或按 Room 能力处理未绑用户）
-
-Room 升版迁移：既有用户 `phone = null`，下次进入强制绑号流程。
-
-会话仍使用现有 `TokenStore`（token + userId）；不单独持久化手机号到 Preferences。
+- `UserEntity` / `UserDto` / `UserProfileDto` 增加 `phone`（可空，唯一索引）
+- `passwordHash`：保留列以兼容旧行；新用户可为空字符串
+- `username`：新用户设为手机号（唯一）；旧用户名密码账号迁移后靠绑号补 `phone`
+- Room 升版迁移：旧用户 `phone = null` → 下次冷启动进绑号页
+- 会话仍用 `TokenStore`
 
 ## API
 
-基址与现有一致：`https://app.local/`，经 `LocalApiInterceptor` 分发。
-
 | 方法 | 路径 | 鉴权 | Body / 说明 |
 |------|------|------|-------------|
-| POST | `api/auth/sms/send` | `scene=bind` 需要登录；`scene=login` 不需要 | `{ "phone": "...", "scene": "bind" \| "login" }` → `{ "requestId", "expireInSec", "debugCode?" }` |
-| POST | `api/auth/phone/login` | 否 | `{ "phone", "code" }` → 与现有 login 一致：token + user |
-| POST | `api/users/me/phone` | 是 | `{ "phone", "code" }` → 更新后的当前用户 |
-| GET | `api/users/me` | 是 | 响应增加 `phone` 字段（完整号码；UI 负责脱敏） |
+| POST | `api/auth/sms/send` | `bind` 需登录；`login`/`register` 不需 | `{ phone, scene: "register"\|"login"\|"bind" }` → `{ requestId, expireInSec, debugCode? }` |
+| POST | `api/auth/phone/register` | 否 | `{ phone, code, nickname }` → token + user（已含 phone） |
+| POST | `api/auth/phone/login` | 否 | `{ phone, code }` → token + user |
+| POST | `api/users/me/phone` | 是 | `{ phone, code }` → 更新后的 me（存量绑号） |
+| GET | `api/users/me` | 是 | 含 `phone`（完整号；UI 脱敏） |
+
+### 旧接口处理
+
+- `POST api/auth/login`（用户名密码）、原 `POST api/auth/register`（用户名密码）：**UI 不再调用**；Local 实现可保留兼容或返回 410「请使用手机号登录/注册」，实现计划中二选一（推荐直接改为错误提示，避免双轨）。
 
 ### 错误约定
 
-与现有 `ApiResponse` 风格一致，至少覆盖：
-
-| 条件 | 提示方向 |
-|------|----------|
-| 手机号格式非法 | 前端优先拦截；API 亦可拒 |
+| 条件 | 提示 |
+|------|------|
+| 手机号格式非法 | 前端拦截；API 亦可拒 |
 | 验证码错误或过期 | 「验证码错误或已过期」 |
-| 发送过频 / 冷却中 | 「请稍后再试」 |
-| 绑号：手机号已被占用 | 「该手机号已绑定其他账号」 |
-| 登录：手机号未绑定任何账号 | 「该手机号未绑定账号，请先注册」 |
-| `bind` 场景未登录发码 | 401，回登录 |
-| 已绑定用户再次绑号 | 「已绑定手机号」 |
+| 发送过频 | 「请稍后再试」 |
+| 注册：号已占用 | 「该手机号已注册，请直接登录」 |
+| 登录：号未注册 | 「该手机号未注册，请先注册」 |
+| 绑号：号已被他人占用 | 「该手机号已绑定其他账号」 |
+| `bind` 未登录 | 401 |
+| 已有 phone 再绑 | 「已绑定手机号」 |
 
 ## 模块与页面
 
-### 分层
-
 ```text
-UI (LoginActivity / BindPhoneActivity / SplashActivity / ProfileFragment)
-  → AuthRepository（sendSms / loginByPhone / bindPhone）
-    → DouyinApi
-      → LocalApiDispatcher
-        → LocalAuthService + SmsGateway (MockSmsGateway)
-          → UserDao / TokenStore
+UI (LoginActivity / RegisterActivity / BindPhoneActivity / Splash / Profile)
+  → AuthRepository（sendSms / registerByPhone / loginByPhone / bindPhone）
+    → DouyinApi → LocalApiDispatcher
+      → LocalAuthService + SmsGateway(Mock) → UserDao / TokenStore
 ```
-
-### SmsGateway
-
-```text
-sendCode(phone, scene) → { requestId, expireInSec, debugCode? }
-verifyCode(phone, scene, code) → boolean
-```
-
-日后真实短信：新增 `RealSmsGateway` 实现同一接口，业务路径与 DTO 不变。
-
-### UI 职责
 
 | 组件 | 职责 |
 |------|------|
-| `LoginActivity` | 双 Tab；成功后走统一路由（是否已绑号） |
-| `BindPhoneActivity`（新建） | 手机号 + 验证码；无「跳过」；成功进 Main |
-| `RegisterActivity` | 注册成功 → BindPhone，不进 Main |
-| `SplashActivity` | hydrate 后按 token/phone 路由 |
-| `ProfileFragment` | 脱敏展示手机号 |
-| 共用表单逻辑（Helper 或简单封装） | 手机号校验、倒计时、验证码输入（登录 Tab 与绑号页复用） |
+| `LoginActivity` | 仅验证码登录；入口去注册 |
+| `RegisterActivity` | 手机号 + 验证码 + 昵称；成功进 Main |
+| `BindPhoneActivity` | 仅存量无 phone 用户 |
+| `SplashActivity` | 按 token/phone 路由 |
+| `ProfileFragment` | 脱敏手机号 |
+| 共用 Helper | 校验、倒计时、验证码输入（登录/注册/绑号复用） |
 
 ### 主要文件影响
 
-- **新建：** `BindPhoneActivity`、对应 layout、`SmsGateway`、`MockSmsGateway`、短信/绑号相关 Request/Response DTO、可选路由纯函数与单测
-- **修改：** `UserEntity`（含 DB version/migration）、`LocalAuthService`、`LocalApiDispatcher`、`DouyinApi`、`AuthRepository`、`LoginActivity`、`SplashActivity`、`RegisterActivity`、`ProfileFragment`、`AndroidManifest`、`strings.xml`
-
-## 错误处理（UI）
-
-- 格式问题：前端拦截，不发请求
-- 冷却中：按钮倒计时，禁止点击
-- 验证码错误：保留手机号，允许重试
-- Mock 不依赖外网与运营商
+- **新建：** `BindPhoneActivity`、layout、`SmsGateway`、`MockSmsGateway`、DTO、路由纯函数与单测
+- **修改：** `UserEntity`（+migration）、`LocalAuthService`、`LocalApiDispatcher`、`DouyinApi`、`AuthRepository`、`LoginActivity`（去掉密码表单）、`RegisterActivity`（改为手机注册）、`SplashActivity`、`ProfileFragment`、Manifest、strings
+- **可删/闲置：** 登录 layout 中密码相关控件；`PasswordHasher` 可暂留供旧数据，新路径不依赖
 
 ## 测试与验收
 
-### 单测（优先 JVM）
+### 单测
 
-1. `MockSmsGateway`：发码、冷却、过期、场景隔离、校验成功/失败
-2. `LocalAuthService`：绑号成功与唯一冲突；手机登录发 token；未绑定登录失败
-3. 路由纯函数：`(hasToken, hasPhone) → Login | Bind | Main`
+1. `MockSmsGateway`：发码、冷却、过期、三场景隔离
+2. `LocalAuthService`：手机注册成功；重复号失败；登录成功/未注册失败；存量绑号与冲突
+3. 路由：`(hasToken, hasPhone) → Login | Bind | Main`
 
-### 手工验收
+### 手工
 
-1. 注册 → 强制绑号 → 进入首页；Back 无法回到未绑状态进 Main
-2. 冷启动：已登录未绑 → 绑号页
-3. 登录双 Tab：密码登录未绑 → 绑号；验证码登录仅已绑号可用
-4. 个人页展示脱敏手机号
-5. 错误路径：错码、占号、未绑定号登录
+1. 新用户：注册（验证码）→ 直接进首页
+2. 登录：已注册号验证码进首页；未注册号提示注册
+3. 无密码登录入口
+4. 存量：清库前旧用户或手动 `phone=null` → 冷启动进绑号 → 完成后进首页
+5. 个人页脱敏；错码 / 占号 / 过频
 
 ### 验收标准
 
-- 未绑号无法进入 `MainActivity`
-- 手机验证码登录仅对已绑号用户有效
-- 替换 `SmsGateway` 实现时，API 路径与 DTO 保持不变
+- 无账号密码登录入口
+- 新用户注册即带 phone，进 Main 不经绑号
+- 未绑号（存量）无法进 Main
+- 替换 `SmsGateway` 时 API 路径与 DTO 不变
 
 ## 后续（非本轮）
 
-- 朋友页完善（关注/好友列表等）
-- 真实短信网关接入
-- 改绑 / 解绑流程
+- 朋友页完善
+- 真实短信网关
+- 改绑 / 解绑
+- 清理用户名密码遗留列与旧 API
