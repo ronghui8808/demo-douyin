@@ -29,20 +29,24 @@ public final class SeedDataInitializer {
     private static final String KEY_DONE = "seed_done";
     private static final String DEMO_USERNAME = "demo";
     private static final String DEMO_PASSWORD = "123456";
+    private static final String DEMO_PHONE = "13800138000";
 
     private SeedDataInitializer() {
     }
 
     public static void init(Context context) {
-        if (isSeedDone(context)) {
+        Context appContext = context.getApplicationContext();
+        if (isSeedDone(appContext)) {
+            ensureDemoPhone(AppDatabase.get(appContext).userDao());
             return;
         }
-        initBlocking(context);
+        initBlocking(appContext);
     }
 
     public static synchronized void initBlocking(Context context) {
         Context appContext = context.getApplicationContext();
         if (isSeedDone(appContext)) {
+            ensureDemoPhone(AppDatabase.get(appContext).userDao());
             return;
         }
 
@@ -58,6 +62,7 @@ public final class SeedDataInitializer {
     private static long ensureDemoUser(UserDao userDao) {
         UserEntity existing = userDao.findByUsername(DEMO_USERNAME);
         if (existing != null) {
+            ensureDemoPhone(userDao, existing);
             return existing.id;
         }
 
@@ -65,8 +70,22 @@ public final class SeedDataInitializer {
         user.username = DEMO_USERNAME;
         user.passwordHash = PasswordHasher.hash(DEMO_PASSWORD);
         user.nickname = "演示用户";
+        user.phone = DEMO_PHONE;
         user.createdAt = System.currentTimeMillis();
         return userDao.insert(user);
+    }
+
+    private static void ensureDemoPhone(UserDao userDao) {
+        UserEntity existing = userDao.findByUsername(DEMO_USERNAME);
+        if (existing != null) {
+            ensureDemoPhone(userDao, existing);
+        }
+    }
+
+    private static void ensureDemoPhone(UserDao userDao, UserEntity demoUser) {
+        if (TextUtils.isEmpty(demoUser.phone)) {
+            userDao.updatePhone(demoUser.id, DEMO_PHONE);
+        }
     }
 
     private static void seedVideos(Context context, UserDao userDao, VideoDao videoDao, long demoUserId) {
