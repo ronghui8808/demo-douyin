@@ -188,7 +188,8 @@ public class AuthRepository {
         public void onResponse(Call<ApiResponse<T>> call, Response<ApiResponse<T>> response) {
             if (!response.isSuccessful()) {
                 ApiResponse<?> parsed = parseErrorApiResponse(response);
-                int code = response.code() > 0 ? response.code() : -1;
+                int httpCode = response.code();
+                int code = httpCode > 0 ? httpCode : -1;
                 String message = "请求失败";
                 if (parsed != null) {
                     if (parsed.code != 0) {
@@ -198,11 +199,22 @@ public class AuthRepository {
                         message = parsed.message;
                     }
                 }
+                if (httpCode == 401 || code == 401) {
+                    clearSession();
+                    notifyError(401, message);
+                    return;
+                }
                 notifyError(code, message);
                 return;
             }
             if (response.body() == null) {
-                notifyError(response.code() > 0 ? response.code() : -1, "请求失败");
+                int httpCode = response.code();
+                if (httpCode == 401) {
+                    clearSession();
+                    notifyError(401, "未登录");
+                    return;
+                }
+                notifyError(httpCode > 0 ? httpCode : -1, "请求失败");
                 return;
             }
             deliverResponse(response.body());

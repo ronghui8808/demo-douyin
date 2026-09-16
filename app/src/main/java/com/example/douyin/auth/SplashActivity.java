@@ -55,11 +55,10 @@ public class SplashActivity extends AppCompatActivity {
                     if (routed || isFinishing()) {
                         return;
                     }
-                    if (code == 401 || !TokenStore.get(SplashActivity.this).isLoggedIn()) {
-                        openDestination(AuthDestination.LOGIN);
-                    } else {
-                        openDestination(AuthDestination.BIND_PHONE);
-                    }
+                    // Prefer clearSession + Login on any getMe failure (401 or network);
+                    // never route to BindPhone from Splash on error.
+                    authRepository.logout();
+                    openDestination(AuthDestination.LOGIN);
                 }
             });
         } finally {

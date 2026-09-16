@@ -70,11 +70,12 @@ public class LoginActivity extends AppCompatActivity {
                 if (isFinishing()) {
                     return;
                 }
+                // 401 or any other getMe error: clear session and show login form.
+                // BindPhone only via onSuccess (empty phone) through AuthNavigator.
                 if (authRepository.isLoggedIn()) {
-                    AuthNavigator.openByDestination(LoginActivity.this, AuthDestination.BIND_PHONE);
-                } else {
-                    showLoginForm();
+                    authRepository.logout();
                 }
+                showLoginForm();
             }
         });
     }

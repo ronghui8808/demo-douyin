@@ -13,6 +13,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.PhoneMasker;
+import com.example.douyin.auth.PhoneValidator;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.UserProfileDto;
@@ -189,7 +190,16 @@ public class UserProfileController {
 
         String nickname = !TextUtils.isEmpty(profile.nickname) ? profile.nickname : profile.username;
         tvNickname.setText(nickname);
-        tvUsername.setText("@" + profile.username);
+        boolean usernameIsPhone = !TextUtils.isEmpty(profile.username)
+                && (profile.username.equals(profile.phone)
+                || PhoneValidator.isValidPhone(profile.username));
+        if (usernameIsPhone || TextUtils.isEmpty(profile.username)) {
+            tvUsername.setVisibility(View.GONE);
+            tvUsername.setText("");
+        } else {
+            tvUsername.setVisibility(View.VISIBLE);
+            tvUsername.setText("@" + profile.username);
+        }
         if (!TextUtils.isEmpty(profile.phone)) {
             tvPhone.setVisibility(View.VISIBLE);
             tvPhone.setText(PhoneMasker.mask(profile.phone));
