@@ -18,9 +18,11 @@ public class MockSmsGatewayTest {
         SmsSendResult r1 = gw.sendCode("13800138000", "login");
         assertTrue(r1.ok);
         assertEquals("123456", r1.debugCode);
+        assertEquals(300, r1.expireInSec);
 
         SmsSendResult r2 = gw.sendCode("13800138000", "login");
         assertFalse(r2.ok);
+        assertEquals("请稍后再试", r2.errorMessage);
 
         assertTrue(gw.verifyCode("13800138000", "login", "123456"));
         assertFalse(gw.verifyCode("13800138000", "login", "000000"));
@@ -29,8 +31,15 @@ public class MockSmsGatewayTest {
         gw.sendCode("13900139000", "register");
         assertFalse(gw.verifyCode("13900139000", "login", "123456"));
         assertTrue(gw.verifyCode("13900139000", "register", "123456"));
+    }
 
+    @Test
+    public void verifyCode_failsAfterExpiry_withoutPriorSuccessfulVerify() {
+        AtomicLong now = new AtomicLong(1_000_000L);
+        MockSmsGateway gw = new MockSmsGateway(60_000L, 300_000L, now::get);
+
+        gw.sendCode("13700137000", "login");
         now.addAndGet(301_000L);
-        assertFalse(gw.verifyCode("13800138000", "login", "123456"));
+        assertFalse(gw.verifyCode("13700137000", "login", "123456"));
     }
 }
