@@ -87,6 +87,17 @@
                     android:textSize="14sp"
                     tools:text="@username" />
 
+                <TextView
+                    android:id="@+id/tv_phone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/douyin_gray"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:text="138****8000"
+                    tools:visibility="visible" />
+
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

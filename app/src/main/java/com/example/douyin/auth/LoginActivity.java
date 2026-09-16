@@ -15,11 +15,11 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.douyin.BuildConfig;
-import com.example.douyin.MainActivity;
 import com.example.douyin.R;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.LoginResult;
 import com.example.douyin.network.model.SmsSendResultDto;
+import com.example.douyin.network.model.UserDto;
 import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.trace.AuthTrace;
 import com.google.android.material.button.MaterialButton;
@@ -48,10 +48,38 @@ public class LoginActivity extends AppCompatActivity {
         authRepository = new AuthRepository(this);
 
         if (authRepository.isLoggedIn()) {
-            goToMain();
+            routeIfAlreadyLoggedIn();
             return;
         }
 
+        showLoginForm();
+    }
+
+    private void routeIfAlreadyLoggedIn() {
+        authRepository.getMe(new ApiCallback<UserDto>() {
+            @Override
+            public void onSuccess(UserDto data) {
+                if (isFinishing()) {
+                    return;
+                }
+                AuthNavigator.openAfterAuth(LoginActivity.this, data);
+            }
+
+            @Override
+            public void onError(int code, String message) {
+                if (isFinishing()) {
+                    return;
+                }
+                if (authRepository.isLoggedIn()) {
+                    AuthNavigator.openByDestination(LoginActivity.this, AuthDestination.BIND_PHONE);
+                } else {
+                    showLoginForm();
+                }
+            }
+        });
+    }
+
+    private void showLoginForm() {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_login);
         setupWindowInsets();
@@ -148,7 +176,7 @@ public class LoginActivity extends AppCompatActivity {
                 public void onSuccess(LoginResult data) {
                     setLoading(false);
                     Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_SHORT).show();
-                    goToMain();
+                    AuthNavigator.openAfterAuth(LoginActivity.this, data != null ? data.user : null);
                 }
 
                 @Override
@@ -175,7 +203,9 @@ public class LoginActivity extends AppCompatActivity {
                     public void onSuccess(LoginResult loginResult) {
                         setLoading(false);
                         Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_SHORT).show();
-                        goToMain();
+                        AuthNavigator.openAfterAuth(
+                                LoginActivity.this,
+                                loginResult != null ? loginResult.user : null);
                     }
 
                     @Override
@@ -204,13 +234,6 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setEnabled(!loading);
         btnLogin.setText(loading ? "" : getString(R.string.action_login));
         progressLogin.setVisibility(loading ? View.VISIBLE : View.GONE);
-    }
-
-    private void goToMain() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
     }
 
     private static String getText(TextInputEditText editText) {

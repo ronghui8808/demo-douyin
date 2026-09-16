@@ -1,40 +1,78 @@
 package com.example.douyin.auth;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
-import com.example.douyin.MainActivity;
 import com.example.douyin.R;
+import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.TokenStore;
+import com.example.douyin.network.model.UserDto;
+import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.trace.AuthTrace;
 
 public class SplashActivity extends AppCompatActivity {
+
+    private AuthRepository authRepository;
+    private boolean routed;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_splash);
+        authRepository = new AuthRepository(this);
         findViewById(R.id.tv_splash).post(this::routeNextScreen);
     }
 
     private void routeNextScreen() {
+        if (routed || isFinishing()) {
+            return;
+        }
         AuthTrace.begin("auth_splash_route");
         try {
             boolean loggedIn = TokenStore.get(this).isLoggedIn();
-            Intent intent = loggedIn
-                    ? new Intent(this, MainActivity.class)
-                    : new Intent(this, LoginActivity.class);
-            startActivity(intent);
-            overridePendingTransition(0, 0);
-            finish();
-            overridePendingTransition(0, 0);
+            if (!loggedIn) {
+                openDestination(AuthDestination.LOGIN);
+                return;
+            }
+
+            authRepository.getMe(new ApiCallback<UserDto>() {
+                @Override
+                public void onSuccess(UserDto data) {
+                    if (routed || isFinishing()) {
+                        return;
+                    }
+                    boolean hasPhone = data != null && !TextUtils.isEmpty(data.phone);
+                    openDestination(AuthDestination.resolve(true, hasPhone));
+                }
+
+                @Override
+                public void onError(int code, String message) {
+                    if (routed || isFinishing()) {
+                        return;
+                    }
+                    if (code == 401 || !TokenStore.get(SplashActivity.this).isLoggedIn()) {
+                        openDestination(AuthDestination.LOGIN);
+                    } else {
+                        openDestination(AuthDestination.BIND_PHONE);
+                    }
+                }
+            });
         } finally {
             AuthTrace.end();
         }
+    }
+
+    private void openDestination(AuthDestination destination) {
+        if (routed || isFinishing()) {
+            return;
+        }
+        routed = true;
+        AuthNavigator.openByDestination(this, destination);
+        overridePendingTransition(0, 0);
     }
 }

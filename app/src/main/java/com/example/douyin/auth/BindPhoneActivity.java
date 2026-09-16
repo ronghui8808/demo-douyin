@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -14,30 +15,28 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.douyin.BuildConfig;
+import com.example.douyin.MainActivity;
 import com.example.douyin.R;
 import com.example.douyin.network.ApiCallback;
-import com.example.douyin.network.model.LoginResult;
 import com.example.douyin.network.model.SmsSendResultDto;
+import com.example.douyin.network.model.UserDto;
 import com.example.douyin.repository.AuthRepository;
-import com.example.douyin.trace.AuthTrace;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-public class RegisterActivity extends AppCompatActivity {
+public class BindPhoneActivity extends AppCompatActivity {
 
     private static final int SMS_COUNTDOWN_SECONDS = 60;
 
     private AuthRepository authRepository;
     private TextInputLayout tilPhone;
     private TextInputLayout tilCode;
-    private TextInputLayout tilNickname;
     private TextInputEditText etPhone;
     private TextInputEditText etCode;
-    private TextInputEditText etNickname;
     private MaterialButton btnSendCode;
-    private MaterialButton btnRegister;
-    private ProgressBar progressRegister;
+    private MaterialButton btnBindPhone;
+    private ProgressBar progressBindPhone;
     private SmsCountdownHelper smsCountdownHelper;
 
     @Override
@@ -46,10 +45,11 @@ public class RegisterActivity extends AppCompatActivity {
         authRepository = new AuthRepository(this);
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        setContentView(R.layout.activity_register);
+        setContentView(R.layout.activity_bind_phone);
         setupWindowInsets();
         bindViews();
         setupActions();
+        blockBackToMain();
     }
 
     @Override
@@ -61,7 +61,7 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void setupWindowInsets() {
-        View root = findViewById(R.id.register_root);
+        View root = findViewById(R.id.bind_phone_root);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -72,20 +72,26 @@ public class RegisterActivity extends AppCompatActivity {
     private void bindViews() {
         tilPhone = findViewById(R.id.til_phone);
         tilCode = findViewById(R.id.til_code);
-        tilNickname = findViewById(R.id.til_nickname);
         etPhone = findViewById(R.id.et_phone);
         etCode = findViewById(R.id.et_code);
-        etNickname = findViewById(R.id.et_nickname);
         btnSendCode = findViewById(R.id.btn_send_code);
-        btnRegister = findViewById(R.id.btn_register);
-        progressRegister = findViewById(R.id.progress_register);
+        btnBindPhone = findViewById(R.id.btn_bind_phone);
+        progressBindPhone = findViewById(R.id.progress_bind_phone);
         smsCountdownHelper = new SmsCountdownHelper(btnSendCode, SMS_COUNTDOWN_SECONDS);
     }
 
     private void setupActions() {
         btnSendCode.setOnClickListener(v -> attemptSendCode());
-        btnRegister.setOnClickListener(v -> attemptRegister());
-        findViewById(R.id.tv_go_login).setOnClickListener(v -> finish());
+        btnBindPhone.setOnClickListener(v -> attemptBindPhone());
+    }
+
+    private void blockBackToMain() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                moveTaskToBack(true);
+            }
+        });
     }
 
     private void attemptSendCode() {
@@ -97,7 +103,7 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         btnSendCode.setEnabled(false);
-        authRepository.sendSms(phone, "register", new ApiCallback<SmsSendResultDto>() {
+        authRepository.sendSms(phone, "bind", new ApiCallback<SmsSendResultDto>() {
             @Override
             public void onSuccess(SmsSendResultDto data) {
                 smsCountdownHelper.start();
@@ -107,69 +113,56 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onError(int code, String message) {
                 btnSendCode.setEnabled(true);
-                Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
+                Toast.makeText(BindPhoneActivity.this, message, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void attemptRegister() {
-        AuthTrace.begin("auth_register_click");
-        try {
-            clearErrors();
+    private void attemptBindPhone() {
+        tilPhone.setError(null);
+        tilCode.setError(null);
 
-            String phone = getText(etPhone);
-            String code = getText(etCode);
-            String nickname = getText(etNickname);
+        String phone = getText(etPhone);
+        String code = getText(etCode);
 
-            if (!PhoneValidator.isValidPhone(phone)) {
-                tilPhone.setError(getString(R.string.error_phone_invalid));
-                return;
-            }
-            if (!PhoneValidator.isValidCode(code)) {
-                tilCode.setError(getString(R.string.error_code_invalid));
-                return;
-            }
-            if (TextUtils.isEmpty(nickname)) {
-                tilNickname.setError(getString(R.string.error_nickname_empty));
-                return;
-            }
-
-            setLoading(true);
-            authRepository.registerByPhone(phone, code, nickname, new ApiCallback<LoginResult>() {
-                @Override
-                public void onSuccess(LoginResult data) {
-                    setLoading(false);
-                    Toast.makeText(RegisterActivity.this, R.string.register_success, Toast.LENGTH_SHORT).show();
-                    AuthNavigator.openAfterAuth(RegisterActivity.this, data != null ? data.user : null);
-                }
-
-                @Override
-                public void onError(int code, String message) {
-                    setLoading(false);
-                    Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        } finally {
-            AuthTrace.end();
+        if (!PhoneValidator.isValidPhone(phone)) {
+            tilPhone.setError(getString(R.string.error_phone_invalid));
+            return;
         }
+        if (!PhoneValidator.isValidCode(code)) {
+            tilCode.setError(getString(R.string.error_code_invalid));
+            return;
+        }
+
+        setLoading(true);
+        authRepository.bindPhone(phone, code, new ApiCallback<UserDto>() {
+            @Override
+            public void onSuccess(UserDto data) {
+                setLoading(false);
+                Toast.makeText(BindPhoneActivity.this, R.string.bind_phone_success, Toast.LENGTH_SHORT)
+                        .show();
+                AuthNavigator.goClearTask(BindPhoneActivity.this, MainActivity.class);
+            }
+
+            @Override
+            public void onError(int code, String message) {
+                setLoading(false);
+                Toast.makeText(BindPhoneActivity.this, message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void maybeToastDebugCode(SmsSendResultDto data) {
         if (BuildConfig.DEBUG && data != null && !TextUtils.isEmpty(data.debugCode)) {
-            Toast.makeText(this, getString(R.string.sms_debug_code, data.debugCode), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.sms_debug_code, data.debugCode), Toast.LENGTH_SHORT)
+                    .show();
         }
     }
 
-    private void clearErrors() {
-        tilPhone.setError(null);
-        tilCode.setError(null);
-        tilNickname.setError(null);
-    }
-
     private void setLoading(boolean loading) {
-        btnRegister.setEnabled(!loading);
-        btnRegister.setText(loading ? "" : getString(R.string.action_register));
-        progressRegister.setVisibility(loading ? View.VISIBLE : View.GONE);
+        btnBindPhone.setEnabled(!loading);
+        btnBindPhone.setText(loading ? "" : getString(R.string.action_bind_phone));
+        progressBindPhone.setVisibility(loading ? View.VISIBLE : View.GONE);
     }
 
     private static String getText(TextInputEditText editText) {

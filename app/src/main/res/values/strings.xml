@@ -20,6 +20,10 @@
     <string name="login_subtitle">登录后体验完整功能</string>
     <string name="register_title">注册</string>
     <string name="register_subtitle">创建账号，开始创作之旅</string>
+    <string name="bind_phone_title">绑定手机号</string>
+    <string name="bind_phone_subtitle">为保障账号安全，请绑定手机号后继续使用</string>
+    <string name="action_bind_phone">绑定手机号</string>
+    <string name="bind_phone_success">绑定成功</string>
     <string name="hint_username">用户名</string>
     <string name="hint_phone">手机号</string>
     <string name="hint_sms_code">验证码</string>

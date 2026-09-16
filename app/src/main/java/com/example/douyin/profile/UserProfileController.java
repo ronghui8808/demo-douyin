@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.douyin.R;
+import com.example.douyin.auth.PhoneMasker;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.UserProfileDto;
@@ -49,6 +50,7 @@ public class UserProfileController {
     private TextView tvAvatarLetter;
     private TextView tvNickname;
     private TextView tvUsername;
+    private TextView tvPhone;
     private TextView tvVideoCount;
     private TextView tvLikeCount;
     private TextView tvVideosEmpty;
@@ -86,6 +88,7 @@ public class UserProfileController {
         tvAvatarLetter = root.findViewById(R.id.tv_avatar_letter);
         tvNickname = root.findViewById(R.id.tv_nickname);
         tvUsername = root.findViewById(R.id.tv_username);
+        tvPhone = root.findViewById(R.id.tv_phone);
         tvVideoCount = root.findViewById(R.id.tv_video_count);
         tvLikeCount = root.findViewById(R.id.tv_like_count);
         tvVideosEmpty = root.findViewById(R.id.tv_videos_empty);
@@ -187,6 +190,13 @@ public class UserProfileController {
         String nickname = !TextUtils.isEmpty(profile.nickname) ? profile.nickname : profile.username;
         tvNickname.setText(nickname);
         tvUsername.setText("@" + profile.username);
+        if (!TextUtils.isEmpty(profile.phone)) {
+            tvPhone.setVisibility(View.VISIBLE);
+            tvPhone.setText(PhoneMasker.mask(profile.phone));
+        } else {
+            tvPhone.setVisibility(View.GONE);
+            tvPhone.setText("");
+        }
         tvVideoCount.setText(String.valueOf(profile.videoCount));
         tvLikeCount.setText(CountFormatter.format(profile.totalLikeCount));
 
