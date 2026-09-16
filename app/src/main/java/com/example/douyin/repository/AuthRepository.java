@@ -7,9 +7,14 @@ import com.example.douyin.network.DouyinApi;
 import com.example.douyin.network.RetrofitClient;
 import com.example.douyin.network.TokenStore;
 import com.example.douyin.network.model.ApiResponse;
+import com.example.douyin.network.model.BindPhoneRequest;
 import com.example.douyin.network.model.LoginRequest;
 import com.example.douyin.network.model.LoginResult;
+import com.example.douyin.network.model.PhoneLoginRequest;
+import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.RegisterRequest;
+import com.example.douyin.network.model.SmsSendRequest;
+import com.example.douyin.network.model.SmsSendResultDto;
 import com.example.douyin.network.model.UserDto;
 import com.example.douyin.trace.AuthTrace;
 import com.example.douyin.util.AppExecutors;
@@ -26,6 +31,10 @@ public class AuthRepository {
 
     private static final String TRACE_LOGIN = "auth_login";
     private static final String TRACE_REGISTER = "auth_register";
+    private static final String TRACE_SEND_SMS = "auth_send_sms";
+    private static final String TRACE_REGISTER_PHONE = "auth_register_phone";
+    private static final String TRACE_LOGIN_PHONE = "auth_login_phone";
+    private static final String TRACE_BIND_PHONE = "auth_bind_phone";
 
     private final DouyinApi api;
     private final TokenStore tokenStore;
@@ -67,6 +76,65 @@ public class AuthRepository {
                     @Override
                     protected void onSuccessData(LoginResult data) {
                         tokenStore.saveToken(data.token, data.user.id);
+                    }
+
+                    @Override
+                    protected void onErrorData(int code, String message) {
+                    }
+                });
+    }
+
+    public void sendSms(String phone, String scene, ApiCallback<SmsSendResultDto> callback) {
+        int cookie = AuthTrace.beginAsync(TRACE_SEND_SMS);
+        api.sendSms(new SmsSendRequest(phone, scene))
+                .enqueue(new AuthCallback<>(callback, TRACE_SEND_SMS, cookie) {
+                    @Override
+                    protected void onSuccessData(SmsSendResultDto data) {
+                    }
+
+                    @Override
+                    protected void onErrorData(int code, String message) {
+                    }
+                });
+    }
+
+    public void registerByPhone(String phone, String code, String nickname,
+                                ApiCallback<LoginResult> callback) {
+        int cookie = AuthTrace.beginAsync(TRACE_REGISTER_PHONE);
+        api.registerByPhone(new PhoneRegisterRequest(phone, code, nickname))
+                .enqueue(new AuthCallback<>(callback, TRACE_REGISTER_PHONE, cookie) {
+                    @Override
+                    protected void onSuccessData(LoginResult data) {
+                        tokenStore.saveToken(data.token, data.user.id);
+                    }
+
+                    @Override
+                    protected void onErrorData(int code, String message) {
+                    }
+                });
+    }
+
+    public void loginByPhone(String phone, String code, ApiCallback<LoginResult> callback) {
+        int cookie = AuthTrace.beginAsync(TRACE_LOGIN_PHONE);
+        api.loginByPhone(new PhoneLoginRequest(phone, code))
+                .enqueue(new AuthCallback<>(callback, TRACE_LOGIN_PHONE, cookie) {
+                    @Override
+                    protected void onSuccessData(LoginResult data) {
+                        tokenStore.saveToken(data.token, data.user.id);
+                    }
+
+                    @Override
+                    protected void onErrorData(int code, String message) {
+                    }
+                });
+    }
+
+    public void bindPhone(String phone, String code, ApiCallback<UserDto> callback) {
+        int cookie = AuthTrace.beginAsync(TRACE_BIND_PHONE);
+        api.bindPhone(new BindPhoneRequest(phone, code))
+                .enqueue(new AuthCallback<>(callback, TRACE_BIND_PHONE, cookie) {
+                    @Override
+                    protected void onSuccessData(UserDto data) {
                     }
 
                     @Override
