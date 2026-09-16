@@ -57,8 +57,13 @@ public class VideoPlayerController implements TextureView.SurfaceTextureListener
         return isPrepared && mediaPlayer != null && mediaPlayer.isPlaying();
     }
 
+    /** 播放意图：prepareAsync 期间也为 true，是暂停 UI 的判定依据。 */
+    public boolean isPlayWhenReady() {
+        return playWhenReady;
+    }
+
     public void togglePlayPause() {
-        if (isPlaying()) {
+        if (playWhenReady) {
             pause();
         } else {
             play();

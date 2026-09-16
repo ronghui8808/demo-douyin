@@ -113,10 +113,10 @@ public class VideoPageFragment extends Fragment {
             }
             updatePauseIndicator();
             refreshEmbeddedProfile();
-        } else if (playerController != null && playbackReady && isPageActive() && isResumed() && !userPaused) {
-            playerController.play();
-            updatePauseIndicator();
         } else {
+            if (playerController != null && shouldAutoPlay()) {
+                playerController.play();
+            }
             updatePauseIndicator();
         }
     }
@@ -272,7 +272,7 @@ public class VideoPageFragment extends Fragment {
             return;
         }
         playerController.togglePlayPause();
-        userPaused = !playerController.isPlaying();
+        userPaused = !playerController.isPlayWhenReady();
         updatePauseIndicator();
     }
 
@@ -281,12 +281,22 @@ public class VideoPageFragment extends Fragment {
             return;
         }
         boolean show = playerController != null
-                && playbackReady
-                && !playerController.isPlaying()
-                && isShowingVideo()
-                && isPageActive()
-                && isResumed();
+                && PlaybackUiPolicy.shouldShowPauseIndicator(
+                        playbackReady,
+                        playerController.isPlayWhenReady(),
+                        isShowingVideo(),
+                        isPageActive(),
+                        isResumed());
         ivPauseIndicator.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private boolean shouldAutoPlay() {
+        return PlaybackUiPolicy.shouldAutoPlay(
+                playbackReady,
+                isShowingVideo(),
+                isPageActive(),
+                isResumed(),
+                userPaused);
     }
 
     private void onDoubleTapLike(float x, float y, @NonNull View overlay, @NonNull View pageView) {
@@ -347,7 +357,7 @@ public class VideoPageFragment extends Fragment {
                         }
                         playbackReady = true;
                         playerController.setVideoUrl(playableUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
+                        if (shouldAutoPlay()) {
                             playerController.play();
                         }
                         updatePauseIndicator();
@@ -360,7 +370,7 @@ public class VideoPageFragment extends Fragment {
                         }
                         playbackReady = true;
                         playerController.setVideoUrl(video.videoUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
+                        if (shouldAutoPlay()) {
                             playerController.play();
                         }
                         updatePauseIndicator();
@@ -376,7 +386,7 @@ public class VideoPageFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (playerController != null && playbackReady && isPageActive() && isShowingVideo() && !userPaused) {
+        if (playerController != null && shouldAutoPlay()) {
             playerController.play();
         }
         updatePauseIndicator();
@@ -386,6 +396,10 @@ public class VideoPageFragment extends Fragment {
     public void onPause() {
         if (playerController != null) {
             playerController.pause();
+        }
+        if (!isPageActive()) {
+            // 已经滑到别的视频，再滑回来时应重新自动播放
+            userPaused = false;
         }
         updatePauseIndicator();
         super.onPause();
