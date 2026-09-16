@@ -2,9 +2,12 @@ package com.example.douyin.local.db;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.douyin.local.db.entity.CommentEntity;
 import com.example.douyin.local.db.entity.LikeEntity;
@@ -18,12 +21,20 @@ import com.example.douyin.local.db.entity.VideoEntity;
                 CommentEntity.class,
                 LikeEntity.class
         },
-        version = 1,
+        version = 2,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
 
     private static volatile AppDatabase instance;
+
+    static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE users ADD COLUMN phone TEXT");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_users_phone ON users(phone)");
+        }
+    };
 
     public abstract UserDao userDao();
 
@@ -42,6 +53,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "douyin.db"
                             )
+                            .addMigrations(MIGRATION_1_2)
                             .allowMainThreadQueries()
                             .build();
                 }

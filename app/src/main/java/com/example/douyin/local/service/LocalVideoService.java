@@ -94,6 +94,7 @@ public class LocalVideoService {
         dto.id = user.id;
         dto.username = user.username;
         dto.nickname = user.nickname;
+        dto.phone = user.phone;
         dto.createdAt = user.createdAt;
         if (!TextUtils.isEmpty(user.avatarPath)) {
             dto.avatarUrl = EntityMapper.toVideoUrl(user.avatarPath);

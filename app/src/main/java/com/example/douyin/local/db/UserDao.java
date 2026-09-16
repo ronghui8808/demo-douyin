@@ -19,6 +19,12 @@ public interface UserDao {
     @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
     UserEntity findById(long id);
 
+    @Query("SELECT * FROM users WHERE phone = :phone LIMIT 1")
+    UserEntity findByPhone(String phone);
+
+    @Query("UPDATE users SET phone = :phone WHERE id = :id")
+    void updatePhone(long id, String phone);
+
     @Query("SELECT COUNT(*) FROM users")
     int count();
 }

@@ -7,7 +7,10 @@ import androidx.room.PrimaryKey;
 
 @Entity(
         tableName = "users",
-        indices = {@Index(value = "username", unique = true)}
+        indices = {
+                @Index(value = "username", unique = true),
+                @Index(value = "phone", unique = true)
+        }
 )
 public class UserEntity {
 
@@ -25,6 +28,9 @@ public class UserEntity {
 
     @ColumnInfo(name = "avatar_path")
     public String avatarPath;
+
+    @ColumnInfo(name = "phone")
+    public String phone;
 
     @ColumnInfo(name = "created_at")
     public long createdAt;

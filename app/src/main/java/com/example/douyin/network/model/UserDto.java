@@ -6,5 +6,6 @@ public class UserDto {
     public String username;
     public String nickname;
     public String avatarUrl;
+    public String phone;
     public long createdAt;
 }

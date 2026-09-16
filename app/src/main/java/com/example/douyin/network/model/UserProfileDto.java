@@ -6,6 +6,7 @@ public class UserProfileDto {
     public String username;
     public String nickname;
     public String avatarUrl;
+    public String phone;
     public long createdAt;
     public int videoCount;
     public int totalLikeCount;

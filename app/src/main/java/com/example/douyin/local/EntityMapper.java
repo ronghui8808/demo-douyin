@@ -15,6 +15,7 @@ public final class EntityMapper {
         dto.id = entity.id;
         dto.username = entity.username;
         dto.nickname = entity.nickname;
+        dto.phone = entity.phone;
         dto.createdAt = entity.createdAt;
         if (!TextUtils.isEmpty(entity.avatarPath)) {
             dto.avatarUrl = "file://" + entity.avatarPath;
