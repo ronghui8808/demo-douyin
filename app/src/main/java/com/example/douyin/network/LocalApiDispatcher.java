@@ -7,9 +7,13 @@ import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
 import com.example.douyin.local.service.LocalVideoService;
 import com.example.douyin.network.model.ApiResponse;
+import com.example.douyin.network.model.BindPhoneRequest;
 import com.example.douyin.network.model.LoginRequest;
+import com.example.douyin.network.model.PhoneLoginRequest;
+import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
 import com.example.douyin.network.model.RegisterRequest;
+import com.example.douyin.network.model.SmsSendRequest;
 import com.google.gson.Gson;
 
 import java.io.File;
@@ -54,6 +58,43 @@ public final class LocalApiDispatcher {
                         authService.login(body.username, body.password),
                         gson
                 );
+            }
+
+            if ("POST".equals(method) && path.equals("/api/auth/sms/send")) {
+                SmsSendRequest body = readJsonBody(request, gson, SmsSendRequest.class);
+                String phone = body != null ? body.phone : null;
+                String scene = body != null ? body.scene : null;
+                Long userId = null;
+                if ("bind".equals(scene)) {
+                    userId = requireUserId(request, authService);
+                }
+                return LocalApiResult.from(authService.sendSms(phone, scene, userId), gson);
+            }
+
+            if ("POST".equals(method) && path.equals("/api/auth/phone/register")) {
+                PhoneRegisterRequest body = readJsonBody(request, gson, PhoneRegisterRequest.class);
+                String phone = body != null ? body.phone : null;
+                String code = body != null ? body.code : null;
+                String nickname = body != null ? body.nickname : null;
+                return LocalApiResult.from(authService.registerByPhone(phone, code, nickname), gson);
+            }
+
+            if ("POST".equals(method) && path.equals("/api/auth/phone/login")) {
+                PhoneLoginRequest body = readJsonBody(request, gson, PhoneLoginRequest.class);
+                String phone = body != null ? body.phone : null;
+                String code = body != null ? body.code : null;
+                return LocalApiResult.from(authService.loginByPhone(phone, code), gson);
+            }
+
+            if ("POST".equals(method) && path.equals("/api/users/me/phone")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                BindPhoneRequest body = readJsonBody(request, gson, BindPhoneRequest.class);
+                String phone = body != null ? body.phone : null;
+                String code = body != null ? body.code : null;
+                return LocalApiResult.from(authService.bindPhone(userId, phone, code), gson);
             }
 
             if ("GET".equals(method) && path.equals("/api/users/me")) {

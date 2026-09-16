@@ -13,7 +13,11 @@ import com.example.douyin.network.model.RegisterRequest;
 import com.example.douyin.network.model.UserDto;
 import com.example.douyin.trace.AuthTrace;
 import com.example.douyin.util.AppExecutors;
+import com.google.gson.Gson;
 
+import java.io.IOException;
+
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -114,7 +118,22 @@ public class AuthRepository {
 
         @Override
         public void onResponse(Call<ApiResponse<T>> call, Response<ApiResponse<T>> response) {
-            if (!response.isSuccessful() || response.body() == null) {
+            if (!response.isSuccessful()) {
+                ApiResponse<?> parsed = parseErrorApiResponse(response);
+                int code = response.code() > 0 ? response.code() : -1;
+                String message = "请求失败";
+                if (parsed != null) {
+                    if (parsed.code != 0) {
+                        code = parsed.code;
+                    }
+                    if (parsed.message != null && !parsed.message.isEmpty()) {
+                        message = parsed.message;
+                    }
+                }
+                notifyError(code, message);
+                return;
+            }
+            if (response.body() == null) {
                 notifyError(response.code() > 0 ? response.code() : -1, "请求失败");
                 return;
             }
@@ -124,6 +143,26 @@ public class AuthRepository {
         @Override
         public void onFailure(Call<ApiResponse<T>> call, Throwable t) {
             notifyError(-1, t.getMessage() != null ? t.getMessage() : "网络错误");
+        }
+
+        @SuppressWarnings("unchecked")
+        private ApiResponse<?> parseErrorApiResponse(Response<ApiResponse<T>> response) {
+            try {
+                if (response.body() != null) {
+                    return response.body();
+                }
+                ResponseBody errorBody = response.errorBody();
+                if (errorBody == null) {
+                    return null;
+                }
+                String json = errorBody.string();
+                if (json == null || json.isEmpty()) {
+                    return null;
+                }
+                return new Gson().fromJson(json, ApiResponse.class);
+            } catch (IOException | RuntimeException ignored) {
+                return null;
+            }
         }
 
         private void deliverResponse(ApiResponse<T> body) {

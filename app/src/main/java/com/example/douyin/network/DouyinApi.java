@@ -1,14 +1,19 @@
 package com.example.douyin.network;
 
 import com.example.douyin.network.model.ApiResponse;
+import com.example.douyin.network.model.BindPhoneRequest;
 import com.example.douyin.network.model.CommentDto;
 import com.example.douyin.network.model.CommentPage;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.LoginRequest;
 import com.example.douyin.network.model.LoginResult;
+import com.example.douyin.network.model.PhoneLoginRequest;
+import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
 import com.example.douyin.network.model.RegisterRequest;
+import com.example.douyin.network.model.SmsSendRequest;
+import com.example.douyin.network.model.SmsSendResultDto;
 import com.example.douyin.network.model.UserDto;
 import com.example.douyin.network.model.UserProfileDto;
 import com.example.douyin.network.model.VideoDto;
@@ -31,6 +36,18 @@ public interface DouyinApi {
 
     @POST("api/auth/login")
     Call<ApiResponse<LoginResult>> login(@Body LoginRequest body);
+
+    @POST("api/auth/sms/send")
+    Call<ApiResponse<SmsSendResultDto>> sendSms(@Body SmsSendRequest body);
+
+    @POST("api/auth/phone/register")
+    Call<ApiResponse<LoginResult>> registerByPhone(@Body PhoneRegisterRequest body);
+
+    @POST("api/auth/phone/login")
+    Call<ApiResponse<LoginResult>> loginByPhone(@Body PhoneLoginRequest body);
+
+    @POST("api/users/me/phone")
+    Call<ApiResponse<UserDto>> bindPhone(@Body BindPhoneRequest body);
 
     @GET("api/users/me")
     Call<ApiResponse<UserDto>> getMe();
