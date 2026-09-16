@@ -6,6 +6,8 @@ import com.example.douyin.local.db.AppDatabase;
 import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
 import com.example.douyin.local.service.LocalVideoService;
+import com.example.douyin.local.sms.MockSmsGateway;
+import com.example.douyin.local.sms.SmsGateway;
 
 public final class LocalServices {
 
@@ -13,6 +15,7 @@ public final class LocalServices {
     private static LocalAuthService authService;
     private static LocalVideoService videoService;
     private static LocalCommentService commentService;
+    private static SmsGateway smsGateway;
 
     private LocalServices() {
     }
@@ -23,7 +26,8 @@ public final class LocalServices {
         }
         Context appContext = context.getApplicationContext();
         AppDatabase database = AppDatabase.get(appContext);
-        authService = new LocalAuthService(appContext, database.userDao());
+        smsGateway = new MockSmsGateway();
+        authService = new LocalAuthService(appContext, database.userDao(), smsGateway);
         videoService = new LocalVideoService(
                 appContext,
                 database.userDao(),
@@ -58,6 +62,7 @@ public final class LocalServices {
         authService = null;
         videoService = null;
         commentService = null;
+        smsGateway = null;
         AppDatabase.resetInstance();
     }
 
