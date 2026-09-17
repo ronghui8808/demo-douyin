@@ -6,6 +6,7 @@ import android.text.TextUtils;
 import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
 import com.example.douyin.local.service.LocalFollowService;
+import com.example.douyin.local.service.LocalMessageService;
 import com.example.douyin.local.service.LocalVideoService;
 import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.BindPhoneRequest;
@@ -15,6 +16,7 @@ import com.example.douyin.network.model.PhoneLoginRequest;
 import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
 import com.example.douyin.network.model.RegisterRequest;
+import com.example.douyin.network.model.SendMessageRequest;
 import com.example.douyin.network.model.SmsSendRequest;
 import com.google.gson.Gson;
 
@@ -44,6 +46,7 @@ public final class LocalApiDispatcher {
             LocalVideoService videoService,
             LocalCommentService commentService,
             LocalFollowService followService,
+            LocalMessageService messageService,
             Gson gson
     ) {
         try {
@@ -215,6 +218,34 @@ public final class LocalApiDispatcher {
             if ("GET".equals(method) && path.matches("/api/users/\\d+")) {
                 long targetUserId = Long.parseLong(path.substring("/api/users/".length()));
                 return LocalApiResult.from(videoService.getUserProfile(targetUserId), gson);
+            }
+
+            if ("GET".equals(method) && path.equals("/api/messages/conversations")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                return LocalApiResult.from(messageService.listConversations(userId), gson);
+            }
+
+            if ("GET".equals(method) && path.matches("/api/messages/conversations/\\d+")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                long peerUserId = parsePathLong(path, "/api/messages/conversations/", "");
+                return LocalApiResult.from(messageService.listMessages(userId, peerUserId), gson);
+            }
+
+            if ("POST".equals(method) && path.equals("/api/messages")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                SendMessageRequest body = readJsonBody(request, gson, SendMessageRequest.class);
+                long toUserId = body != null ? body.toUserId : 0L;
+                String content = body != null ? body.content : null;
+                return LocalApiResult.from(messageService.send(userId, toUserId, content), gson);
             }
 
             return LocalApiResult.from(ApiResponse.error(404, "接口不存在: " + path), gson);

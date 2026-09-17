@@ -39,6 +39,7 @@ public class LocalApiInterceptor implements Interceptor {
                 LocalServices.video(),
                 LocalServices.comment(),
                 LocalServices.follow(),
+                LocalServices.messages(),
                 gson
         );
 

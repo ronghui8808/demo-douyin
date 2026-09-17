@@ -4,16 +4,19 @@ import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.BindPhoneRequest;
 import com.example.douyin.network.model.CommentDto;
 import com.example.douyin.network.model.CommentPage;
+import com.example.douyin.network.model.ConversationDto;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.LoginRequest;
 import com.example.douyin.network.model.LoginResult;
 import com.example.douyin.network.model.MatchPhonesRequest;
 import com.example.douyin.network.model.MatchPhonesResult;
+import com.example.douyin.network.model.MessageDto;
 import com.example.douyin.network.model.PhoneLoginRequest;
 import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
 import com.example.douyin.network.model.RegisterRequest;
+import com.example.douyin.network.model.SendMessageRequest;
 import com.example.douyin.network.model.SmsSendRequest;
 import com.example.douyin.network.model.SmsSendResultDto;
 import com.example.douyin.network.model.UserDto;
@@ -108,4 +111,13 @@ public interface DouyinApi {
             @Query("page") int page,
             @Query("size") int size
     );
+
+    @GET("api/messages/conversations")
+    Call<ApiResponse<List<ConversationDto>>> getConversations();
+
+    @GET("api/messages/conversations/{peerUserId}")
+    Call<ApiResponse<List<MessageDto>>> getMessages(@Path("peerUserId") long peerUserId);
+
+    @POST("api/messages")
+    Call<ApiResponse<MessageDto>> sendMessage(@Body SendMessageRequest body);
 }

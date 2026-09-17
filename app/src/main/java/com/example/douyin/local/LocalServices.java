@@ -6,6 +6,7 @@ import com.example.douyin.local.db.AppDatabase;
 import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
 import com.example.douyin.local.service.LocalFollowService;
+import com.example.douyin.local.service.LocalMessageService;
 import com.example.douyin.local.service.LocalVideoService;
 import com.example.douyin.local.sms.MockSmsGateway;
 import com.example.douyin.local.sms.SmsGateway;
@@ -17,6 +18,7 @@ public final class LocalServices {
     private static LocalVideoService videoService;
     private static LocalCommentService commentService;
     private static LocalFollowService followService;
+    private static LocalMessageService messageService;
     private static SmsGateway smsGateway;
 
     private LocalServices() {
@@ -44,6 +46,12 @@ public final class LocalServices {
                 database.commentDao()
         );
         followService = new LocalFollowService(database.userDao(), database.followDao());
+        messageService = new LocalMessageService(
+                database.userDao(),
+                database.followDao(),
+                database.conversationDao(),
+                database.messageDao()
+        );
         initialized = true;
     }
 
@@ -67,12 +75,18 @@ public final class LocalServices {
         return followService;
     }
 
+    public static LocalMessageService messages() {
+        checkInitialized();
+        return messageService;
+    }
+
     public static void resetForTests() {
         initialized = false;
         authService = null;
         videoService = null;
         commentService = null;
         followService = null;
+        messageService = null;
         smsGateway = null;
         AppDatabase.resetInstance();
     }
