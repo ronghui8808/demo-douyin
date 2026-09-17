@@ -13,7 +13,8 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.example.douyin.util.AppToast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -81,7 +82,7 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
                 if (hasAllPermissions()) {
                     startCamera();
                 } else {
-                    Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_SHORT).show();
+                    AppToast.show(this, R.string.camera_permission_denied);
                     finish();
                 }
             });
@@ -142,18 +143,14 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
         if (uri == null) {
             return;
         }
-        Toast.makeText(this, R.string.publish_video_importing, Toast.LENGTH_SHORT).show();
+        AppToast.show(this, R.string.publish_video_importing);
         AppExecutors.get().diskIo(() -> {
             try {
                 String path = VideoImportHelper.copyToCache(getApplicationContext(), uri).getAbsolutePath();
                 AppExecutors.get().mainThread(() -> openPublishWithVideo(path));
             } catch (IOException e) {
                 AppExecutors.get().mainThread(() ->
-                        Toast.makeText(
-                                CameraRecordActivity.this,
-                                R.string.publish_video_import_failed,
-                                Toast.LENGTH_SHORT
-                        ).show());
+                        AppToast.show(CameraRecordActivity.this, R.string.publish_video_import_failed));
             }
         });
     }
@@ -246,6 +243,6 @@ public class CameraRecordActivity extends AppCompatActivity implements CameraRec
         mainHandler.removeCallbacks(timerRunnable);
         tvRecordTime.setVisibility(View.GONE);
         recordInner.setBackgroundResource(R.drawable.bg_record_inner);
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        AppToast.show(this, message);
     }
 }

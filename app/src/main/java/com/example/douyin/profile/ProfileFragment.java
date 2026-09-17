@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
 import com.example.douyin.repository.AuthRepository;
+import com.example.douyin.util.AppToast;
 
 public class ProfileFragment extends Fragment {
 
@@ -67,7 +67,7 @@ public class ProfileFragment extends Fragment {
 
     private void logout() {
         authRepository.logout();
-        Toast.makeText(requireContext(), R.string.logout_success, Toast.LENGTH_SHORT).show();
+        AppToast.show(requireContext(), R.string.logout_success);
         navigateToLogin();
     }
 

@@ -2,7 +2,6 @@ package com.example.douyin;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -24,6 +23,7 @@ import com.example.douyin.placeholder.PlaceholderFragment;
 import com.example.douyin.profile.ProfileFragment;
 import com.example.douyin.publish.CameraRecordActivity;
 import com.example.douyin.repository.AuthRepository;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
             }
             if ((itemId == R.id.nav_profile || itemId == R.id.nav_friends)
                     && !authRepository.isLoggedIn()) {
-                Toast.makeText(this, R.string.login_required, Toast.LENGTH_SHORT).show();
+                AppToast.show(this, R.string.login_required);
                 startActivity(new Intent(this, LoginActivity.class));
                 return false;
             }
@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void openPublishFlow() {
         if (!authRepository.isLoggedIn()) {
-            Toast.makeText(this, R.string.login_required, Toast.LENGTH_SHORT).show();
+            AppToast.show(this, R.string.login_required);
             startActivity(new Intent(this, LoginActivity.class));
             return;
         }

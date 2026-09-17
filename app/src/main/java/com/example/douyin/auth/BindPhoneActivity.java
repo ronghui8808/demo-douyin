@@ -4,7 +4,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.ProgressBar;
-import android.widget.Toast;
+
+import com.example.douyin.util.AppToast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
@@ -113,7 +114,7 @@ public class BindPhoneActivity extends AppCompatActivity {
             @Override
             public void onError(int code, String message) {
                 btnSendCode.setEnabled(true);
-                Toast.makeText(BindPhoneActivity.this, message, Toast.LENGTH_SHORT).show();
+                AppToast.show(BindPhoneActivity.this, message);
             }
         });
     }
@@ -139,23 +140,21 @@ public class BindPhoneActivity extends AppCompatActivity {
             @Override
             public void onSuccess(UserDto data) {
                 setLoading(false);
-                Toast.makeText(BindPhoneActivity.this, R.string.bind_phone_success, Toast.LENGTH_SHORT)
-                        .show();
+                AppToast.show(BindPhoneActivity.this, R.string.bind_phone_success);
                 AuthNavigator.goClearTask(BindPhoneActivity.this, MainActivity.class);
             }
 
             @Override
             public void onError(int code, String message) {
                 setLoading(false);
-                Toast.makeText(BindPhoneActivity.this, message, Toast.LENGTH_SHORT).show();
+                AppToast.show(BindPhoneActivity.this, message);
             }
         });
     }
 
     private void maybeToastDebugCode(SmsSendResultDto data) {
         if (BuildConfig.DEBUG && data != null && !TextUtils.isEmpty(data.debugCode)) {
-            Toast.makeText(this, getString(R.string.sms_debug_code, data.debugCode), Toast.LENGTH_SHORT)
-                    .show();
+            AppToast.show(this, getString(R.string.sms_debug_code, data.debugCode));
         }
     }
 

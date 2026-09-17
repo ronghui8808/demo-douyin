@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,6 +18,7 @@ import com.example.douyin.R;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.UserDto;
 import com.example.douyin.repository.FriendRepository;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public class FollowingListActivity extends AppCompatActivity {
             @Override
             public void onError(int code, String message) {
                 progress.setVisibility(View.GONE);
-                Toast.makeText(FollowingListActivity.this, message, Toast.LENGTH_SHORT).show();
+                AppToast.show(FollowingListActivity.this, message);
             }
         });
     }
@@ -113,8 +113,7 @@ public class FollowingListActivity extends AppCompatActivity {
 
                         @Override
                         public void onError(int code, String message) {
-                            Toast.makeText(FollowingListActivity.this, message, Toast.LENGTH_SHORT)
-                                    .show();
+                            AppToast.show(FollowingListActivity.this, message);
                         }
                     }));
         }

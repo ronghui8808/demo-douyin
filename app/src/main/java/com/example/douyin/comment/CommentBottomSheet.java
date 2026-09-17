@@ -11,7 +11,6 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,6 +25,7 @@ import com.example.douyin.network.model.CommentPage;
 import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.repository.CommentRepository;
 import com.example.douyin.util.CountFormatter;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -218,7 +218,7 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
                     tvEmpty.setVisibility(View.VISIBLE);
                     tvEmpty.setText(message != null ? message : getString(R.string.comment_load_failed));
                 } else {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                    AppToast.show(requireContext(), message);
                 }
             }
         });
@@ -229,14 +229,14 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
             return;
         }
         if (!authRepository.isLoggedIn()) {
-            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
+            AppToast.show(requireContext(), R.string.login_required);
             startActivity(new Intent(requireContext(), LoginActivity.class));
             return;
         }
 
         String content = etComment.getText() != null ? etComment.getText().toString().trim() : "";
         if (TextUtils.isEmpty(content)) {
-            Toast.makeText(requireContext(), R.string.comment_content_empty, Toast.LENGTH_SHORT).show();
+            AppToast.show(requireContext(), R.string.comment_content_empty);
             return;
         }
 
@@ -269,11 +269,11 @@ public class CommentBottomSheet extends BottomSheetDialogFragment {
                 posting = false;
                 btnSend.setEnabled(true);
                 if (code == 401) {
-                    Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
+                    AppToast.show(requireContext(), R.string.login_required);
                     startActivity(new Intent(requireContext(), LoginActivity.class));
                     return;
                 }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                AppToast.show(requireContext(), message);
             }
         });
     }

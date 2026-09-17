@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -26,6 +25,7 @@ import com.example.douyin.network.model.MatchPhonesResult;
 import com.example.douyin.network.model.PhoneMatchItem;
 import com.example.douyin.profile.UserProfileActivity;
 import com.example.douyin.repository.FriendRepository;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
@@ -138,7 +138,7 @@ public class FriendsFragment extends Fragment implements ContactMatchAdapter.Lis
             @Override
             public void onError(int code, String message) {
                 setLoading(false);
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                AppToast.show(requireContext(), message);
                 showEmpty(message, false);
             }
         });
@@ -170,7 +170,7 @@ public class FriendsFragment extends Fragment implements ContactMatchAdapter.Lis
 
                 @Override
                 public void onError(int code, String message) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                    AppToast.show(requireContext(), message);
                 }
             });
         } else {
@@ -182,7 +182,7 @@ public class FriendsFragment extends Fragment implements ContactMatchAdapter.Lis
 
                 @Override
                 public void onError(int code, String message) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                    AppToast.show(requireContext(), message);
                 }
             });
         }

@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,6 +19,7 @@ import com.example.douyin.network.model.LoginResult;
 import com.example.douyin.network.model.SmsSendResultDto;
 import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.trace.AuthTrace;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -107,7 +107,7 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onError(int code, String message) {
                 btnSendCode.setEnabled(true);
-                Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
+                AppToast.show(RegisterActivity.this, message);
             }
         });
     }
@@ -139,14 +139,14 @@ public class RegisterActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(LoginResult data) {
                     setLoading(false);
-                    Toast.makeText(RegisterActivity.this, R.string.register_success, Toast.LENGTH_SHORT).show();
+                    AppToast.show(RegisterActivity.this, R.string.register_success);
                     AuthNavigator.openAfterAuth(RegisterActivity.this, data != null ? data.user : null);
                 }
 
                 @Override
                 public void onError(int code, String message) {
                     setLoading(false);
-                    Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
+                    AppToast.show(RegisterActivity.this, message);
                 }
             });
         } finally {
@@ -156,7 +156,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     private void maybeToastDebugCode(SmsSendResultDto data) {
         if (BuildConfig.DEBUG && data != null && !TextUtils.isEmpty(data.debugCode)) {
-            Toast.makeText(this, getString(R.string.sms_debug_code, data.debugCode), Toast.LENGTH_SHORT).show();
+            AppToast.show(this, getString(R.string.sms_debug_code, data.debugCode));
         }
     }
 

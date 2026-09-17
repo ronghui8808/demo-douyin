@@ -13,7 +13,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,6 +30,7 @@ import com.example.douyin.player.VideoPlayerController;
 import com.example.douyin.profile.UserProfileController;
 import com.example.douyin.util.CountFormatter;
 import com.example.douyin.widget.ProfileSwipeLayout;
+import com.example.douyin.util.AppToast;
 
 public class VideoPageFragment extends Fragment {
 
@@ -478,7 +478,7 @@ public class VideoPageFragment extends Fragment {
                 if (!isAdded() || code == 401) {
                     return;
                 }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                AppToast.show(requireContext(), message);
             }
         });
     }

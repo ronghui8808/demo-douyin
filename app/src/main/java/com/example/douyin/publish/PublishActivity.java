@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.annotation.Nullable;
@@ -20,6 +19,7 @@ import com.example.douyin.network.model.VideoDto;
 import com.example.douyin.repository.VideoRepository;
 import com.example.douyin.util.AppExecutors;
 import com.example.douyin.util.CoverExtractor;
+import com.example.douyin.util.AppToast;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.File;
@@ -51,13 +51,13 @@ public class PublishActivity extends AppCompatActivity {
 
         String videoPath = getIntent().getStringExtra(EXTRA_VIDEO_PATH);
         if (TextUtils.isEmpty(videoPath)) {
-            Toast.makeText(this, R.string.publish_video_invalid, Toast.LENGTH_SHORT).show();
+            AppToast.show(this, R.string.publish_video_invalid);
             finish();
             return;
         }
         videoFile = new File(videoPath);
         if (!videoFile.exists()) {
-            Toast.makeText(this, R.string.publish_video_invalid, Toast.LENGTH_SHORT).show();
+            AppToast.show(this, R.string.publish_video_invalid);
             finish();
             return;
         }
@@ -110,7 +110,7 @@ public class PublishActivity extends AppCompatActivity {
             @Override
             public void onSuccess(VideoDto data) {
                 setPublishing(false);
-                Toast.makeText(PublishActivity.this, R.string.publish_success, Toast.LENGTH_SHORT).show();
+                AppToast.show(PublishActivity.this, R.string.publish_success);
                 setResult(RESULT_OK);
                 finish();
             }
@@ -119,15 +119,11 @@ public class PublishActivity extends AppCompatActivity {
             public void onError(int code, String message) {
                 setPublishing(false);
                 if (code == 401) {
-                    Toast.makeText(PublishActivity.this, R.string.login_required, Toast.LENGTH_SHORT).show();
+                    AppToast.show(PublishActivity.this, R.string.login_required);
                     finish();
                     return;
                 }
-                Toast.makeText(
-                        PublishActivity.this,
-                        message != null ? message : getString(R.string.publish_failed),
-                        Toast.LENGTH_SHORT
-                ).show();
+                AppToast.show(PublishActivity.this, message != null ? message : getString(R.string.publish_failed));
             }
         });
     }

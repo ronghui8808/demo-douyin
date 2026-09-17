@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,6 +23,7 @@ import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.VideoDto;
 import com.example.douyin.repository.AuthRepository;
 import com.example.douyin.repository.VideoRepository;
+import com.example.douyin.util.AppToast;
 
 import java.util.List;
 
@@ -105,7 +105,7 @@ public class FeedFragment extends Fragment {
 
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
         if (!authRepository.isLoggedIn()) {
-            Toast.makeText(requireContext(), R.string.login_required, Toast.LENGTH_SHORT).show();
+            AppToast.show(requireContext(), R.string.login_required);
             startActivity(new Intent(requireContext(), LoginActivity.class));
             callback.onError(401, getString(R.string.login_required));
             return;
