@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="end"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp">
+
+    <TextView
+        android:id="@+id/tv_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_chat_bubble_out"
+        android:maxWidth="260dp"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        tools:text="你好！" />
+
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/douyin_gray"
+        android:textSize="11sp"
+        tools:text="刚刚" />
+</LinearLayout>
