@@ -17,6 +17,7 @@ import com.example.douyin.R;
 import com.example.douyin.auth.PhoneMasker;
 import com.example.douyin.auth.PhoneValidator;
 import com.example.douyin.friends.FollowingListActivity;
+import com.example.douyin.message.ChatActivity;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.UserProfileDto;
@@ -62,11 +63,14 @@ public class UserProfileController {
     private TextView tvVideosEmpty;
     private RecyclerView rvVideos;
     private MaterialButton btnLogout;
+    private MaterialButton btnDm;
     @Nullable
     private SwipeRefreshLayout swipeRefresh;
 
     private boolean loaded;
     private boolean refreshPending;
+    @Nullable
+    private String currentNickname;
 
     public UserProfileController(@NonNull View root,
                                  long userId,
@@ -102,9 +106,13 @@ public class UserProfileController {
         tvVideosEmpty = root.findViewById(R.id.tv_videos_empty);
         rvVideos = root.findViewById(R.id.rv_videos);
         btnLogout = root.findViewById(R.id.btn_logout);
+        btnDm = root.findViewById(R.id.btn_dm);
 
         tvSwipeHint.setVisibility(embedded ? View.VISIBLE : View.GONE);
         btnLogout.setVisibility(showLogout ? View.VISIBLE : View.GONE);
+        btnDm.setVisibility(showLogout ? View.GONE : View.VISIBLE);
+        btnDm.setOnClickListener(v ->
+                ChatActivity.start(root.getContext(), userId, currentNickname));
         if (layoutFollowingStat != null) {
             if (showLogout) {
                 layoutFollowingStat.setOnClickListener(v ->
@@ -206,6 +214,7 @@ public class UserProfileController {
         layoutProfileContent.setVisibility(View.VISIBLE);
 
         String nickname = !TextUtils.isEmpty(profile.nickname) ? profile.nickname : profile.username;
+        currentNickname = nickname;
         tvNickname.setText(nickname);
         boolean usernameIsPhone = !TextUtils.isEmpty(profile.username)
                 && (profile.username.equals(profile.phone)

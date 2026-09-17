@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.douyin.R;
+import com.example.douyin.message.ChatActivity;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.UserDto;
 import com.example.douyin.repository.FriendRepository;
@@ -95,7 +96,10 @@ public class FollowingListActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull Holder holder, int position) {
             UserDto user = items.get(position);
-            holder.tvNickname.setText(user.nickname != null ? user.nickname : user.username);
+            String nickname = user.nickname != null ? user.nickname : user.username;
+            holder.tvNickname.setText(nickname);
+            holder.itemView.setOnClickListener(v ->
+                    ChatActivity.start(FollowingListActivity.this, user.id, nickname));
             holder.btnUnfollow.setOnClickListener(v ->
                     friendRepository.unfollow(user.id, new ApiCallback<Boolean>() {
                         @Override
