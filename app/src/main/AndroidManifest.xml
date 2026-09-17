@@ -81,6 +81,11 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".message.ChatActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".profile.UserProfileActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
