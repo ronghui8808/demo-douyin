@@ -5,10 +5,12 @@ import android.text.TextUtils;
 
 import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
+import com.example.douyin.local.service.LocalFollowService;
 import com.example.douyin.local.service.LocalVideoService;
 import com.example.douyin.network.model.ApiResponse;
 import com.example.douyin.network.model.BindPhoneRequest;
 import com.example.douyin.network.model.LoginRequest;
+import com.example.douyin.network.model.MatchPhonesRequest;
 import com.example.douyin.network.model.PhoneLoginRequest;
 import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
@@ -41,6 +43,7 @@ public final class LocalApiDispatcher {
             LocalAuthService authService,
             LocalVideoService videoService,
             LocalCommentService commentService,
+            LocalFollowService followService,
             Gson gson
     ) {
         try {
@@ -158,6 +161,44 @@ public final class LocalApiDispatcher {
                         commentService.postComment(userId, videoId, content),
                         gson
                 );
+            }
+
+            if ("POST".equals(method) && path.equals("/api/users/match-phones")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                MatchPhonesRequest body = readJsonBody(request, gson, MatchPhonesRequest.class);
+                return LocalApiResult.from(
+                        followService.matchPhones(userId, body != null ? body.phones : null),
+                        gson
+                );
+            }
+
+            if ("GET".equals(method) && path.equals("/api/users/me/following")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                return LocalApiResult.from(followService.listFollowing(userId), gson);
+            }
+
+            if ("POST".equals(method) && path.matches("/api/users/\\d+/follow")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                long followeeId = parsePathLong(path, "/api/users/", "/follow");
+                return LocalApiResult.from(followService.follow(userId, followeeId), gson);
+            }
+
+            if ("DELETE".equals(method) && path.matches("/api/users/\\d+/follow")) {
+                Long userId = requireUserId(request, authService);
+                if (userId == null) {
+                    return LocalApiResult.from(ApiResponse.error(401, "未登录"), gson);
+                }
+                long followeeId = parsePathLong(path, "/api/users/", "/follow");
+                return LocalApiResult.from(followService.unfollow(userId, followeeId), gson);
             }
 
             if ("GET".equals(method) && path.matches("/api/users/\\d+/videos")) {

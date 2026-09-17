@@ -10,4 +10,5 @@ public class UserProfileDto {
     public long createdAt;
     public int videoCount;
     public int totalLikeCount;
+    public int followingCount;
 }

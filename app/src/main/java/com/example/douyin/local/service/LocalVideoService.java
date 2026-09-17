@@ -4,6 +4,7 @@ import android.content.Context;
 import android.text.TextUtils;
 
 import com.example.douyin.local.EntityMapper;
+import com.example.douyin.local.db.FollowDao;
 import com.example.douyin.local.db.LikeDao;
 import com.example.douyin.local.db.UserDao;
 import com.example.douyin.local.db.VideoDao;
@@ -34,12 +35,19 @@ public class LocalVideoService {
     private final UserDao userDao;
     private final VideoDao videoDao;
     private final LikeDao likeDao;
+    private final FollowDao followDao;
 
     public LocalVideoService(Context context, UserDao userDao, VideoDao videoDao, LikeDao likeDao) {
+        this(context, userDao, videoDao, likeDao, null);
+    }
+
+    public LocalVideoService(Context context, UserDao userDao, VideoDao videoDao, LikeDao likeDao,
+                             FollowDao followDao) {
         this.appContext = context.getApplicationContext();
         this.userDao = userDao;
         this.videoDao = videoDao;
         this.likeDao = likeDao;
+        this.followDao = followDao;
     }
 
     public ApiResponse<FeedPage> getFeed(int page, int size, Long currentUserId) {
@@ -101,6 +109,7 @@ public class LocalVideoService {
         }
         dto.videoCount = videoDao.countByUserId(userId);
         dto.totalLikeCount = videoDao.sumLikeCountByUserId(userId);
+        dto.followingCount = followDao != null ? followDao.countByFollower(userId) : 0;
         return ApiResponse.ok(dto);
     }
 

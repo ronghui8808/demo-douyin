@@ -8,4 +8,5 @@ public class UserDto {
     public String avatarUrl;
     public String phone;
     public long createdAt;
+    public int followingCount;
 }

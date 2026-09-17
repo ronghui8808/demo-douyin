@@ -5,6 +5,7 @@ import android.content.Context;
 import com.example.douyin.local.db.AppDatabase;
 import com.example.douyin.local.service.LocalAuthService;
 import com.example.douyin.local.service.LocalCommentService;
+import com.example.douyin.local.service.LocalFollowService;
 import com.example.douyin.local.service.LocalVideoService;
 import com.example.douyin.local.sms.MockSmsGateway;
 import com.example.douyin.local.sms.SmsGateway;
@@ -15,6 +16,7 @@ public final class LocalServices {
     private static LocalAuthService authService;
     private static LocalVideoService videoService;
     private static LocalCommentService commentService;
+    private static LocalFollowService followService;
     private static SmsGateway smsGateway;
 
     private LocalServices() {
@@ -27,18 +29,21 @@ public final class LocalServices {
         Context appContext = context.getApplicationContext();
         AppDatabase database = AppDatabase.get(appContext);
         smsGateway = new MockSmsGateway();
-        authService = new LocalAuthService(appContext, database.userDao(), smsGateway);
+        authService = new LocalAuthService(
+                appContext, database.userDao(), smsGateway, database.followDao());
         videoService = new LocalVideoService(
                 appContext,
                 database.userDao(),
                 database.videoDao(),
-                database.likeDao()
+                database.likeDao(),
+                database.followDao()
         );
         commentService = new LocalCommentService(
                 database.userDao(),
                 database.videoDao(),
                 database.commentDao()
         );
+        followService = new LocalFollowService(database.userDao(), database.followDao());
         initialized = true;
     }
 
@@ -57,11 +62,17 @@ public final class LocalServices {
         return commentService;
     }
 
+    public static LocalFollowService follow() {
+        checkInitialized();
+        return followService;
+    }
+
     public static void resetForTests() {
         initialized = false;
         authService = null;
         videoService = null;
         commentService = null;
+        followService = null;
         smsGateway = null;
         AppDatabase.resetInstance();
     }

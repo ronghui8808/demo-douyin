@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import com.example.douyin.auth.PhoneValidator;
 import com.example.douyin.local.EntityMapper;
+import com.example.douyin.local.db.FollowDao;
 import com.example.douyin.local.db.UserDao;
 import com.example.douyin.local.db.entity.UserEntity;
 import com.example.douyin.local.sms.MockSmsGateway;
@@ -36,16 +37,23 @@ public class LocalAuthService {
     private static final String MSG_USER_MISSING = "用户不存在";
 
     private final UserDao userDao;
+    private final FollowDao followDao;
     private final TokenStore tokenStore;
     private final SmsGateway smsGateway;
     private final Map<String, Long> sessions = new HashMap<>();
 
     public LocalAuthService(Context context, UserDao userDao) {
-        this(context, userDao, new MockSmsGateway());
+        this(context, userDao, new MockSmsGateway(), null);
     }
 
     public LocalAuthService(Context context, UserDao userDao, SmsGateway smsGateway) {
+        this(context, userDao, smsGateway, null);
+    }
+
+    public LocalAuthService(Context context, UserDao userDao, SmsGateway smsGateway,
+                            FollowDao followDao) {
         this.userDao = userDao;
+        this.followDao = followDao;
         this.tokenStore = TokenStore.get(context);
         this.smsGateway = smsGateway;
         restoreSessionFromStore();
@@ -172,7 +180,9 @@ public class LocalAuthService {
         if (user == null) {
             return ApiResponse.error(401, MSG_USER_MISSING);
         }
-        return ApiResponse.ok(EntityMapper.toUserDto(user));
+        UserDto dto = EntityMapper.toUserDto(user);
+        dto.followingCount = followDao != null ? followDao.countByFollower(userId) : 0;
+        return ApiResponse.ok(dto);
     }
 
     public Long resolveUserId(String token) {

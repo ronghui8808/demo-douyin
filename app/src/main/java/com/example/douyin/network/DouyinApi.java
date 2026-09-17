@@ -8,6 +8,8 @@ import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.LikeResult;
 import com.example.douyin.network.model.LoginRequest;
 import com.example.douyin.network.model.LoginResult;
+import com.example.douyin.network.model.MatchPhonesRequest;
+import com.example.douyin.network.model.MatchPhonesResult;
 import com.example.douyin.network.model.PhoneLoginRequest;
 import com.example.douyin.network.model.PhoneRegisterRequest;
 import com.example.douyin.network.model.PostCommentRequest;
@@ -18,10 +20,13 @@ import com.example.douyin.network.model.UserDto;
 import com.example.douyin.network.model.UserProfileDto;
 import com.example.douyin.network.model.VideoDto;
 
+import java.util.List;
+
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -51,6 +56,18 @@ public interface DouyinApi {
 
     @GET("api/users/me")
     Call<ApiResponse<UserDto>> getMe();
+
+    @POST("api/users/match-phones")
+    Call<ApiResponse<MatchPhonesResult>> matchPhones(@Body MatchPhonesRequest body);
+
+    @POST("api/users/{id}/follow")
+    Call<ApiResponse<Boolean>> follow(@Path("id") long userId);
+
+    @DELETE("api/users/{id}/follow")
+    Call<ApiResponse<Boolean>> unfollow(@Path("id") long userId);
+
+    @GET("api/users/me/following")
+    Call<ApiResponse<List<UserDto>>> getMyFollowing();
 
     @GET("api/users/{id}")
     Call<ApiResponse<UserProfileDto>> getUserProfile(@Path("id") long userId);
