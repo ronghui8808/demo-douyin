@@ -10,6 +10,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.douyin.local.db.entity.CommentEntity;
+import com.example.douyin.local.db.entity.FollowEntity;
 import com.example.douyin.local.db.entity.LikeEntity;
 import com.example.douyin.local.db.entity.UserEntity;
 import com.example.douyin.local.db.entity.VideoEntity;
@@ -19,9 +20,10 @@ import com.example.douyin.local.db.entity.VideoEntity;
                 UserEntity.class,
                 VideoEntity.class,
                 CommentEntity.class,
-                LikeEntity.class
+                LikeEntity.class,
+                FollowEntity.class
         },
-        version = 2,
+        version = 3,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -36,6 +38,20 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS follows ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "follower_id INTEGER NOT NULL, "
+                    + "followee_id INTEGER NOT NULL, "
+                    + "created_at INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS "
+                    + "index_follows_follower_id_followee_id ON follows(follower_id, followee_id)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_follows_followee_id ON follows(followee_id)");
+        }
+    };
+
     public abstract UserDao userDao();
 
     public abstract VideoDao videoDao();
@@ -43,6 +59,8 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract CommentDao commentDao();
 
     public abstract LikeDao likeDao();
+
+    public abstract FollowDao followDao();
 
     public static AppDatabase get(Context context) {
         if (instance == null) {
@@ -53,7 +71,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "douyin.db"
                             )
-                            .addMigrations(MIGRATION_1_2)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                             .allowMainThreadQueries()
                             .build();
                 }

@@ -7,6 +7,8 @@ import androidx.room.Query;
 
 import com.example.douyin.local.db.entity.UserEntity;
 
+import java.util.List;
+
 @Dao
 public interface UserDao {
 
@@ -21,6 +23,9 @@ public interface UserDao {
 
     @Query("SELECT * FROM users WHERE phone = :phone LIMIT 1")
     UserEntity findByPhone(String phone);
+
+    @Query("SELECT * FROM users WHERE phone IN (:phones)")
+    List<UserEntity> findByPhones(List<String> phones);
 
     @Query("UPDATE users SET phone = :phone WHERE id = :id")
     void updatePhone(long id, String phone);
