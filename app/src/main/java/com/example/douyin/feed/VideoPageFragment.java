@@ -271,8 +271,13 @@ public class VideoPageFragment extends Fragment {
         if (playerController == null || !playbackReady) {
             return;
         }
-        playerController.togglePlayPause();
-        userPaused = !playerController.isPlaying();
+        // Drive from user intent, not MediaPlayer.isPlaying(): prepare/start is async.
+        userPaused = !userPaused;
+        if (userPaused) {
+            playerController.pause();
+        } else {
+            playerController.play();
+        }
         updatePauseIndicator();
     }
 
@@ -280,9 +285,11 @@ public class VideoPageFragment extends Fragment {
         if (ivPauseIndicator == null) {
             return;
         }
-        boolean show = playerController != null
+        // Only show for explicit user pause. Do not use !isPlaying() — that is also
+        // true while MediaPlayer is still preparing / before onPrepared starts playback.
+        boolean show = userPaused
+                && playerController != null
                 && playbackReady
-                && !playerController.isPlaying()
                 && isShowingVideo()
                 && isPageActive()
                 && isResumed();
