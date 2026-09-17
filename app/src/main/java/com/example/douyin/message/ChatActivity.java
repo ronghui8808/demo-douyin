@@ -95,7 +95,6 @@ public class ChatActivity extends AppCompatActivity {
 
         adapter = new ChatMessageAdapter(myUserId);
         layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true);
         rvMessages.setLayoutManager(layoutManager);
         rvMessages.setAdapter(adapter);
 

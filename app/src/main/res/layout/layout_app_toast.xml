@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="24dp">
+
+    <TextView
+        android:id="@+id/tv_app_toast"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_app_toast"
+        android:gravity="center"
+        android:maxWidth="280dp"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        tools:text="提示文案" />
+</FrameLayout>
