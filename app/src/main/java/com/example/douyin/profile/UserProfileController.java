@@ -11,9 +11,12 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.content.Intent;
+
 import com.example.douyin.R;
 import com.example.douyin.auth.PhoneMasker;
 import com.example.douyin.auth.PhoneValidator;
+import com.example.douyin.friends.FollowingListActivity;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
 import com.example.douyin.network.model.UserProfileDto;
@@ -54,6 +57,8 @@ public class UserProfileController {
     private TextView tvPhone;
     private TextView tvVideoCount;
     private TextView tvLikeCount;
+    private TextView tvFollowingCount;
+    private View layoutFollowingStat;
     private TextView tvVideosEmpty;
     private RecyclerView rvVideos;
     private MaterialButton btnLogout;
@@ -92,12 +97,24 @@ public class UserProfileController {
         tvPhone = root.findViewById(R.id.tv_phone);
         tvVideoCount = root.findViewById(R.id.tv_video_count);
         tvLikeCount = root.findViewById(R.id.tv_like_count);
+        tvFollowingCount = root.findViewById(R.id.tv_following_count);
+        layoutFollowingStat = root.findViewById(R.id.layout_following_stat);
         tvVideosEmpty = root.findViewById(R.id.tv_videos_empty);
         rvVideos = root.findViewById(R.id.rv_videos);
         btnLogout = root.findViewById(R.id.btn_logout);
 
         tvSwipeHint.setVisibility(embedded ? View.VISIBLE : View.GONE);
         btnLogout.setVisibility(showLogout ? View.VISIBLE : View.GONE);
+        if (layoutFollowingStat != null) {
+            if (showLogout) {
+                layoutFollowingStat.setOnClickListener(v ->
+                        root.getContext().startActivity(
+                                new Intent(root.getContext(), FollowingListActivity.class)));
+            } else {
+                layoutFollowingStat.setClickable(false);
+                layoutFollowingStat.setFocusable(false);
+            }
+        }
         if (showLogout) {
             btnLogout.setOnClickListener(v -> {
                 if (logoutListener != null) {
@@ -209,6 +226,9 @@ public class UserProfileController {
         }
         tvVideoCount.setText(String.valueOf(profile.videoCount));
         tvLikeCount.setText(CountFormatter.format(profile.totalLikeCount));
+        if (tvFollowingCount != null) {
+            tvFollowingCount.setText(String.valueOf(profile.followingCount));
+        }
 
         if (!TextUtils.isEmpty(nickname)) {
             tvAvatarLetter.setText(nickname.substring(0, 1));

@@ -36,8 +36,10 @@ public final class SeedDataInitializer {
 
     public static void init(Context context) {
         Context appContext = context.getApplicationContext();
+        UserDao userDao = AppDatabase.get(appContext).userDao();
         if (isSeedDone(appContext)) {
-            ensureDemoPhone(AppDatabase.get(appContext).userDao());
+            ensureDemoPhone(userDao);
+            ensureContactSeedUsers(userDao);
             return;
         }
         initBlocking(appContext);
@@ -45,16 +47,18 @@ public final class SeedDataInitializer {
 
     public static synchronized void initBlocking(Context context) {
         Context appContext = context.getApplicationContext();
+        UserDao userDao = AppDatabase.get(appContext).userDao();
         if (isSeedDone(appContext)) {
-            ensureDemoPhone(AppDatabase.get(appContext).userDao());
+            ensureDemoPhone(userDao);
+            ensureContactSeedUsers(userDao);
             return;
         }
 
         AppDatabase database = AppDatabase.get(appContext);
-        UserDao userDao = database.userDao();
         VideoDao videoDao = database.videoDao();
 
         long demoUserId = ensureDemoUser(userDao);
+        ensureContactSeedUsers(userDao);
         seedVideos(appContext, userDao, videoDao, demoUserId);
         markSeedDone(appContext);
     }
@@ -86,6 +90,25 @@ public final class SeedDataInitializer {
         if (TextUtils.isEmpty(demoUser.phone)) {
             userDao.updatePhone(demoUser.id, DEMO_PHONE);
         }
+    }
+
+    private static void ensureContactSeedUsers(UserDao userDao) {
+        ensurePhoneUser(userDao, "13900000001", "种子好友一");
+        ensurePhoneUser(userDao, "13900000002", "种子好友二");
+        ensurePhoneUser(userDao, "13900000003", "种子好友三");
+    }
+
+    private static void ensurePhoneUser(UserDao userDao, String phone, String nickname) {
+        if (userDao.findByPhone(phone) != null) {
+            return;
+        }
+        UserEntity user = new UserEntity();
+        user.username = phone;
+        user.passwordHash = "";
+        user.nickname = nickname;
+        user.phone = phone;
+        user.createdAt = System.currentTimeMillis();
+        userDao.insert(user);
     }
 
     private static void seedVideos(Context context, UserDao userDao, VideoDao videoDao, long demoUserId) {

@@ -19,6 +19,7 @@ import androidx.fragment.app.FragmentManager;
 
 import com.example.douyin.auth.LoginActivity;
 import com.example.douyin.feed.FeedFragment;
+import com.example.douyin.friends.FriendsFragment;
 import com.example.douyin.placeholder.PlaceholderFragment;
 import com.example.douyin.profile.ProfileFragment;
 import com.example.douyin.publish.CameraRecordActivity;
@@ -86,7 +87,8 @@ public class MainActivity extends AppCompatActivity {
                 openPublishFlow();
                 return false;
             }
-            if (itemId == R.id.nav_profile && !authRepository.isLoggedIn()) {
+            if ((itemId == R.id.nav_profile || itemId == R.id.nav_friends)
+                    && !authRepository.isLoggedIn()) {
                 Toast.makeText(this, R.string.login_required, Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(this, LoginActivity.class));
                 return false;
@@ -141,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
             return new FeedFragment();
         }
         if (navItemId == R.id.nav_friends) {
-            return PlaceholderFragment.newInstance(R.string.tab_friends_title);
+            return new FriendsFragment();
         }
         if (navItemId == R.id.nav_messages) {
             return PlaceholderFragment.newInstance(R.string.tab_messages_title);
