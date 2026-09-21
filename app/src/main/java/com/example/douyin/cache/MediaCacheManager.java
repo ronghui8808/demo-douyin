@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -24,28 +23,17 @@ import okhttp3.ResponseBody;
 
 public final class MediaCacheManager {
 
-    private static final long MAX_VIDEO_CACHE_BYTES = 512L * 1024L * 1024L;
     private static final long MAX_IMAGE_CACHE_BYTES = 64L * 1024L * 1024L;
-
-    public interface CacheCallback {
-        void onReady(String playableUrl);
-
-        void onError(String message);
-    }
 
     private static MediaCacheManager instance;
 
-    private final File videoCacheDir;
     private final File imageCacheDir;
     private final OkHttpClient httpClient;
-    private final Map<String, DownloadTask> videoTasks = new ConcurrentHashMap<>();
-    private final Map<String, DownloadTask> imageTasks = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> imageTasks = new ConcurrentHashMap<>();
 
     private MediaCacheManager(Context context) {
         File root = new File(context.getCacheDir(), "oss_media");
-        videoCacheDir = new File(root, "video");
         imageCacheDir = new File(root, "image");
-        videoCacheDir.mkdirs();
         imageCacheDir.mkdirs();
         httpClient = new OkHttpClient.Builder().build();
     }
@@ -57,84 +45,42 @@ public final class MediaCacheManager {
         return instance;
     }
 
-    public void prefetchVideo(String remoteUrl) {
-        if (!shouldCacheRemoteUrl(remoteUrl)) {
-            return;
-        }
-        enqueueDownload(CacheType.VIDEO, remoteUrl, null);
-    }
-
     public void prefetchImage(String remoteUrl) {
         if (!shouldCacheRemoteUrl(remoteUrl)) {
             return;
         }
-        enqueueDownload(CacheType.IMAGE, remoteUrl, null);
-    }
-
-    public void resolveVideoForPlayback(String remoteUrl, CacheCallback callback) {
-        if (callback == null) {
-            return;
-        }
-        String normalized = normalizeUrl(remoteUrl);
-        if (TextUtils.isEmpty(normalized)) {
-            callback.onError("视频地址无效");
-            return;
-        }
-        if (isLocalUrl(normalized)) {
-            callback.onReady(normalized);
-            return;
-        }
-        File cached = getCachedFile(CacheType.VIDEO, normalized);
-        if (cached != null) {
-            callback.onReady(toFileUrl(cached));
-            return;
-        }
-        enqueueDownload(CacheType.VIDEO, normalized, callback);
+        enqueueDownload(normalizeUrl(remoteUrl));
     }
 
     public File getCachedImageFile(String remoteUrl) {
         if (!shouldCacheRemoteUrl(remoteUrl)) {
             return null;
         }
-        return getCachedFile(CacheType.IMAGE, normalizeUrl(remoteUrl));
+        return getCachedFile(normalizeUrl(remoteUrl));
     }
 
-    private void enqueueDownload(CacheType type, String url, CacheCallback callback) {
-        Map<String, DownloadTask> tasks = type == CacheType.VIDEO ? videoTasks : imageTasks;
-        DownloadTask existing = tasks.get(url);
-        if (existing != null) {
-            if (callback != null) {
-                existing.addCallback(callback);
-            }
+    private void enqueueDownload(String url) {
+        if (imageTasks.putIfAbsent(url, Boolean.TRUE) != null) {
             return;
         }
-
-        DownloadTask task = new DownloadTask(type, url);
-        if (callback != null) {
-            task.addCallback(callback);
-        }
-        tasks.put(url, task);
         AppExecutors.get().network(() -> {
             try {
-                File file = downloadToCache(type, url);
-                task.notifySuccess(toFileUrl(file));
-            } catch (Exception e) {
-                task.notifyError(e.getMessage() != null ? e.getMessage() : "缓存失败");
+                downloadToCache(url);
+            } catch (Exception ignored) {
             } finally {
-                tasks.remove(url);
+                imageTasks.remove(url);
             }
         });
     }
 
-    private File downloadToCache(CacheType type, String url) throws IOException {
-        File cached = getCachedFile(type, url);
+    private File downloadToCache(String url) throws IOException {
+        File cached = getCachedFile(url);
         if (cached != null) {
             return cached;
         }
 
-        File cacheDir = type == CacheType.VIDEO ? videoCacheDir : imageCacheDir;
-        File tempFile = new File(cacheDir, cacheKey(url) + ".tmp");
-        File targetFile = new File(cacheDir, cacheKey(url) + extensionForUrl(url, type));
+        File tempFile = new File(imageCacheDir, cacheKey(url) + ".tmp");
+        File targetFile = new File(imageCacheDir, cacheKey(url) + extensionForUrl(url));
 
         Request request = new Request.Builder().url(url).get().build();
         try (Response response = httpClient.newCall(request).execute()) {
@@ -162,23 +108,20 @@ public final class MediaCacheManager {
                 throw new IOException("无法写入缓存文件");
             }
         }
-        trimCache(type);
+        trimCache();
         return targetFile;
     }
 
-    private File getCachedFile(CacheType type, String url) {
-        File cacheDir = type == CacheType.VIDEO ? videoCacheDir : imageCacheDir;
-        File file = new File(cacheDir, cacheKey(url) + extensionForUrl(url, type));
+    private File getCachedFile(String url) {
+        File file = new File(imageCacheDir, cacheKey(url) + extensionForUrl(url));
         if (file.exists() && file.length() > 0) {
             return file;
         }
         return null;
     }
 
-    private void trimCache(CacheType type) {
-        File cacheDir = type == CacheType.VIDEO ? videoCacheDir : imageCacheDir;
-        long maxBytes = type == CacheType.VIDEO ? MAX_VIDEO_CACHE_BYTES : MAX_IMAGE_CACHE_BYTES;
-        File[] files = cacheDir.listFiles();
+    private void trimCache() {
+        File[] files = imageCacheDir.listFiles();
         if (files == null || files.length == 0) {
             return;
         }
@@ -191,13 +134,13 @@ public final class MediaCacheManager {
                 total += file.length();
             }
         }
-        if (total <= maxBytes) {
+        if (total <= MAX_IMAGE_CACHE_BYTES) {
             return;
         }
 
         fileList.sort((left, right) -> Long.compare(left.lastModified(), right.lastModified()));
         for (File file : fileList) {
-            if (total <= maxBytes) {
+            if (total <= MAX_IMAGE_CACHE_BYTES) {
                 break;
             }
             total -= file.length();
@@ -220,10 +163,6 @@ public final class MediaCacheManager {
         return url.trim();
     }
 
-    private String toFileUrl(File file) {
-        return "file://" + file.getAbsolutePath();
-    }
-
     private String cacheKey(String url) {
         try {
             MessageDigest digest = MessageDigest.getInstance("MD5");
@@ -238,14 +177,8 @@ public final class MediaCacheManager {
         }
     }
 
-    private String extensionForUrl(String url, CacheType type) {
+    private String extensionForUrl(String url) {
         String lower = url.toLowerCase(Locale.US);
-        if (lower.contains(".mp4")) {
-            return ".mp4";
-        }
-        if (lower.contains(".webm")) {
-            return ".webm";
-        }
         if (lower.contains(".png")) {
             return ".png";
         }
@@ -258,42 +191,6 @@ public final class MediaCacheManager {
         if (lower.contains(".jpg")) {
             return ".jpg";
         }
-        return type == CacheType.VIDEO ? ".mp4" : ".img";
-    }
-
-    private enum CacheType {
-        VIDEO,
-        IMAGE
-    }
-
-    private static final class DownloadTask {
-        private final CopyOnWriteArrayList<CacheCallback> callbacks = new CopyOnWriteArrayList<>();
-
-        DownloadTask(CacheType type, String url) {
-        }
-
-        void addCallback(CacheCallback callback) {
-            if (callback != null) {
-                callbacks.add(callback);
-            }
-        }
-
-        void notifySuccess(String playableUrl) {
-            List<CacheCallback> pending = new ArrayList<>(callbacks);
-            AppExecutors.get().mainThread(() -> {
-                for (CacheCallback callback : pending) {
-                    callback.onReady(playableUrl);
-                }
-            });
-        }
-
-        void notifyError(String message) {
-            List<CacheCallback> pending = new ArrayList<>(callbacks);
-            AppExecutors.get().mainThread(() -> {
-                for (CacheCallback callback : pending) {
-                    callback.onError(message);
-                }
-            });
-        }
+        return ".img";
     }
 }
