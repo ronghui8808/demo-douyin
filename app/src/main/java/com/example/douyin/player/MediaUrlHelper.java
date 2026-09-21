@@ -1,7 +1,5 @@
 package com.example.douyin.player;
 
-import android.text.TextUtils;
-
 public final class MediaUrlHelper {
 
     public static final long PREFETCH_BYTES = 2L * 1024L * 1024L;
@@ -10,7 +8,7 @@ public final class MediaUrlHelper {
     }
 
     public static String normalize(String url) {
-        if (TextUtils.isEmpty(url)) {
+        if (url == null || url.isEmpty()) {
             return "";
         }
         return url.trim();
