@@ -78,6 +78,9 @@ dependencies {
     annotationProcessor(libs.room.compiler)
 
     implementation(libs.aliyun.oss.android.sdk)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.database)
+    implementation(libs.media3.datasource)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
