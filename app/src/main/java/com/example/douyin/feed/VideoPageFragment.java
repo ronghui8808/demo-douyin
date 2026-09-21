@@ -21,7 +21,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.douyin.R;
-import com.example.douyin.cache.MediaCacheManager;
 import com.example.douyin.comment.CommentBottomSheet;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.LikeResult;
@@ -271,7 +270,7 @@ public class VideoPageFragment extends Fragment {
         if (playerController == null || !playbackReady) {
             return;
         }
-        // Drive from user intent, not MediaPlayer.isPlaying(): prepare/start is async.
+        // Drive from user intent, not Player.isPlaying(): prepare/start is async.
         userPaused = !userPaused;
         if (userPaused) {
             playerController.pause();
@@ -286,7 +285,7 @@ public class VideoPageFragment extends Fragment {
             return;
         }
         // Only show for explicit user pause. Do not use !isPlaying() — that is also
-        // true while MediaPlayer is still preparing / before onPrepared starts playback.
+        // true while ExoPlayer is still buffering / before playback starts.
         boolean show = userPaused
                 && playerController != null
                 && playbackReady
@@ -344,36 +343,15 @@ public class VideoPageFragment extends Fragment {
     }
 
     private void preparePlayback() {
-        MediaCacheManager.get(requireContext()).resolveVideoForPlayback(
-                video.videoUrl,
-                new MediaCacheManager.CacheCallback() {
-                    @Override
-                    public void onReady(String playableUrl) {
-                        if (!isAdded() || playerController == null) {
-                            return;
-                        }
-                        playbackReady = true;
-                        playerController.setVideoUrl(playableUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
-                            playerController.play();
-                        }
-                        updatePauseIndicator();
-                    }
-
-                    @Override
-                    public void onError(String message) {
-                        if (!isAdded() || playerController == null) {
-                            return;
-                        }
-                        playbackReady = true;
-                        playerController.setVideoUrl(video.videoUrl);
-                        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
-                            playerController.play();
-                        }
-                        updatePauseIndicator();
-                    }
-                }
-        );
+        if (playerController == null || video == null) {
+            return;
+        }
+        playbackReady = true;
+        playerController.setVideoUrl(video.videoUrl);
+        if (isPageActive() && isResumed() && isShowingVideo() && !userPaused) {
+            playerController.play();
+        }
+        updatePauseIndicator();
     }
 
     private boolean isShowingVideo() {

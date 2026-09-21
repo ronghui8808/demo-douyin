@@ -16,6 +16,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.douyin.R;
 import com.example.douyin.auth.LoginActivity;
+import com.example.douyin.cache.ExoMediaCache;
 import com.example.douyin.cache.MediaCacheManager;
 import com.example.douyin.network.ApiCallback;
 import com.example.douyin.network.model.FeedPage;
@@ -146,20 +147,21 @@ public class FeedFragment extends Fragment {
     }
 
     private void prefetchAround(int position) {
-        MediaCacheManager cacheManager = MediaCacheManager.get(requireContext());
-        prefetchAt(cacheManager, position);
-        prefetchAt(cacheManager, position + 1);
-        prefetchAt(cacheManager, position - 1);
+        ExoMediaCache exoCache = ExoMediaCache.get(requireContext());
+        MediaCacheManager imageCache = MediaCacheManager.get(requireContext());
+        prefetchAt(exoCache, imageCache, position);
+        prefetchAt(exoCache, imageCache, position + 1);
+        prefetchAt(exoCache, imageCache, position - 1);
     }
 
-    private void prefetchAt(MediaCacheManager cacheManager, int position) {
+    private void prefetchAt(ExoMediaCache exoCache, MediaCacheManager imageCache, int position) {
         VideoDto video = pagerAdapter.getVideo(position);
         if (video == null) {
             return;
         }
-        cacheManager.prefetchVideo(video.videoUrl);
+        exoCache.prefetch(video.videoUrl);
         if (video.coverUrl != null && !video.coverUrl.isEmpty()) {
-            cacheManager.prefetchImage(video.coverUrl);
+            imageCache.prefetchImage(video.coverUrl);
         }
     }
 
