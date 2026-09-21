@@ -161,7 +161,7 @@ public class CameraRecorder implements TextureView.SurfaceTextureListener {
             List<Surface> surfaces = new ArrayList<>();
             surfaces.add(previewSurface);
             surfaces.add(recorderSurface);
-
+//            textureView.setRotation(90);
             cameraDevice.createCaptureSession(
                     surfaces,
                     new CameraCaptureSession.StateCallback() {

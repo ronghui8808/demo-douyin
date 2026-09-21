@@ -25,7 +25,7 @@ import com.example.douyin.R;
  */
 public final class AppToast {
 
-    private static final int BOTTOM_OFFSET_DP = 80;
+    private static final float TOP_FRACTION = 0.25f;
     private static final long DURATION_SHORT_MS = 2000L;
     private static final long DURATION_LONG_MS = 3500L;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -80,8 +80,9 @@ public final class AppToast {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        lp.bottomMargin = dpToPx(activity, BOTTOM_OFFSET_DP);
+        lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        int screenHeight = activity.getResources().getDisplayMetrics().heightPixels;
+        lp.topMargin = Math.round(screenHeight * TOP_FRACTION);
 
         overlay.setAlpha(0f);
         decor.addView(overlay, lp);
@@ -130,10 +131,5 @@ public final class AppToast {
             current = ((ContextWrapper) current).getBaseContext();
         }
         return null;
-    }
-
-    private static int dpToPx(@NonNull Context context, int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return Math.round(dp * density);
     }
 }

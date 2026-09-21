@@ -3,6 +3,7 @@ package com.example.douyin;
 import android.content.Intent;
 import android.os.Bundle;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.IdRes;
@@ -32,11 +33,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG_FRIENDS = "tag_friends";
     private static final String TAG_MESSAGES = "tag_messages";
     private static final String TAG_PROFILE = "tag_profile";
+    private static final long EXIT_CONFIRM_INTERVAL_MS = 2000L;
 
     private BottomNavigationView bottomNav;
     private AuthRepository authRepository;
     @IdRes
     private int currentNavItemId = R.id.nav_home;
+    private long lastBackPressedAtMs;
 
     private final ActivityResultLauncher<Intent> publishLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -56,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottom_nav);
         setupWindowInsets();
         setupBottomNavigation();
+        setupBackPressed();
 
         if (savedInstanceState != null) {
             currentNavItemId = savedInstanceState.getInt("current_nav_item", R.id.nav_home);
@@ -63,6 +67,26 @@ public class MainActivity extends AppCompatActivity {
         } else {
             showFragmentForNavItem(R.id.nav_home);
         }
+    }
+
+    private void setupBackPressed() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (currentNavItemId != R.id.nav_home) {
+                    lastBackPressedAtMs = 0L;
+                    bottomNav.setSelectedItemId(R.id.nav_home);
+                    return;
+                }
+                long now = System.currentTimeMillis();
+                if (now - lastBackPressedAtMs <= EXIT_CONFIRM_INTERVAL_MS) {
+                    finish();
+                    return;
+                }
+                lastBackPressedAtMs = now;
+                AppToast.show(MainActivity.this, R.string.press_again_to_exit);
+            }
+        });
     }
 
     @Override
