@@ -9,12 +9,18 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 
 import com.example.douyin.cache.ExoMediaCache;
 
 public class VideoPlayerController {
+
+    private static final int MIN_BUFFER_MS = 2_000;
+    private static final int MAX_BUFFER_MS = 10_000;
+    private static final int BUFFER_FOR_PLAYBACK_MS = 500;
+    private static final int BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 1_000;
 
     private final TextureView textureView;
     private final Context appContext;
@@ -99,7 +105,17 @@ public class VideoPlayerController {
         }
         releaseInternal();
 
-        player = new ExoPlayer.Builder(appContext).build();
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        MIN_BUFFER_MS,
+                        MAX_BUFFER_MS,
+                        BUFFER_FOR_PLAYBACK_MS,
+                        BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                )
+                .build();
+        player = new ExoPlayer.Builder(appContext)
+                .setLoadControl(loadControl)
+                .build();
         player.addListener(playerListener);
         player.setVideoTextureView(textureView);
         player.setRepeatMode(Player.REPEAT_MODE_ONE);

@@ -32,6 +32,11 @@ public class FeedPagerAdapter extends FragmentStateAdapter {
         return videos.get(position);
     }
 
+    public VideoDto getVideoById(long videoId) {
+        int index = indexOf(videoId);
+        return index >= 0 ? videos.get(index) : null;
+    }
+
     public int indexOf(long videoId) {
         for (int i = 0; i < videos.size(); i++) {
             if (videos.get(i).id == videoId) {
@@ -59,11 +64,21 @@ public class FeedPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
-        return VideoPageFragment.newInstance(position);
+        return VideoPageFragment.newInstance(videos.get(position).id);
     }
 
     @Override
     public int getItemCount() {
         return videos.size();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return videos.get(position).id;
+    }
+
+    @Override
+    public boolean containsItem(long itemId) {
+        return indexOf(itemId) >= 0;
     }
 }

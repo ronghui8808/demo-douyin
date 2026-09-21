@@ -86,8 +86,17 @@ public class FeedFragment extends Fragment {
         return position == activePosition;
     }
 
+    public boolean isActiveVideo(long videoId) {
+        VideoDto current = pagerAdapter.getVideo(activePosition);
+        return current != null && current.id == videoId;
+    }
+
     public VideoDto getVideoAt(int position) {
         return pagerAdapter.getVideo(position);
+    }
+
+    public VideoDto getVideoById(long videoId) {
+        return pagerAdapter.getVideoById(videoId);
     }
 
     public void onVideoLikeChanged(long videoId, boolean isLiked, int likeCount) {
@@ -99,9 +108,21 @@ public class FeedFragment extends Fragment {
     }
 
     public void refreshFeed() {
-        if (isAdded()) {
-            loadFeed();
+        // View may be null during Activity restore before onViewCreated
+        // (e.g. process death while recording → MainActivity setSelectedItemId → reselect).
+        if (!isAdded() || getView() == null || viewPager == null) {
+            return;
         }
+        loadFeed();
+    }
+
+    @Override
+    public void onDestroyView() {
+        viewPager = null;
+        progressLoading = null;
+        tvEmpty = null;
+        tvError = null;
+        super.onDestroyView();
     }
 
     public void toggleLike(long videoId, ApiCallback<LikeResult> callback) {
@@ -133,6 +154,7 @@ public class FeedFragment extends Fragment {
                 tvEmpty.setVisibility(View.GONE);
                 tvError.setVisibility(View.GONE);
                 activePosition = 0;
+                viewPager.setCurrentItem(0, false);
                 prefetchAround(0);
             }
 

@@ -63,6 +63,12 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState != null) {
             currentNavItemId = savedInstanceState.getInt("current_nav_item", R.id.nav_home);
+            // FragmentManager may restore fragments; ensure container has one if not.
+            // Do not rely on reselect→refresh during restore (views may not be ready yet).
+            String tag = getTagForNavItem(currentNavItemId);
+            if (getSupportFragmentManager().findFragmentByTag(tag) == null) {
+                showFragmentForNavItem(currentNavItemId);
+            }
             bottomNav.setSelectedItemId(currentNavItemId);
         } else {
             showFragmentForNavItem(R.id.nav_home);

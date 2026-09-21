@@ -33,11 +33,11 @@ import com.example.douyin.util.AppToast;
 
 public class VideoPageFragment extends Fragment {
 
-    private static final String ARG_POSITION = "position";
+    private static final String ARG_VIDEO_ID = "video_id";
     private static final int PAGE_VIDEO = 0;
     private static final int PAGE_PROFILE = 1;
 
-    private int pagePosition;
+    private long videoId;
     private VideoDto video;
     private ViewPager2 slidePager;
     private VideoPlayerController playerController;
@@ -57,10 +57,10 @@ public class VideoPageFragment extends Fragment {
     private boolean userPaused;
     private boolean pendingProfileRefresh;
 
-    public static VideoPageFragment newInstance(int position) {
+    public static VideoPageFragment newInstance(long videoId) {
         VideoPageFragment fragment = new VideoPageFragment();
         Bundle args = new Bundle();
-        args.putInt(ARG_POSITION, position);
+        args.putLong(ARG_VIDEO_ID, videoId);
         fragment.setArguments(args);
         return fragment;
     }
@@ -69,7 +69,7 @@ public class VideoPageFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle args = getArguments();
-        pagePosition = args != null ? args.getInt(ARG_POSITION, 0) : 0;
+        videoId = args != null ? args.getLong(ARG_VIDEO_ID, 0L) : 0L;
     }
 
     @Nullable
@@ -112,8 +112,8 @@ public class VideoPageFragment extends Fragment {
             }
             updatePauseIndicator();
             refreshEmbeddedProfile();
-        } else if (playerController != null && playbackReady && isPageActive() && isResumed() && !userPaused) {
-            playerController.play();
+        } else if (isPageActive() && isResumed() && !userPaused) {
+            preparePlayback();
             updatePauseIndicator();
         } else {
             updatePauseIndicator();
@@ -151,8 +151,8 @@ public class VideoPageFragment extends Fragment {
         setupAvatarEntry(pageView);
         setupVideoTapGestures(pageView);
 
-        playerController = new VideoPlayerController(textureView);
-        preparePlayback();
+        // Defer ExoPlayer create/prepare until this page is active (onResume).
+        // Preparing offscreen pages causes multi-decoder OOM on 256MB heap.
     }
 
     private void bindProfilePage(@NonNull View pageView) {
@@ -343,8 +343,11 @@ public class VideoPageFragment extends Fragment {
     }
 
     private void preparePlayback() {
-        if (playerController == null || video == null) {
+        if (textureView == null || video == null) {
             return;
+        }
+        if (playerController == null) {
+            playerController = new VideoPlayerController(textureView);
         }
         playbackReady = true;
         playerController.setVideoUrl(video.videoUrl);
@@ -354,6 +357,14 @@ public class VideoPageFragment extends Fragment {
         updatePauseIndicator();
     }
 
+    private void releasePlayback() {
+        if (playerController != null) {
+            playerController.release();
+            playerController = null;
+        }
+        playbackReady = false;
+    }
+
     private boolean isShowingVideo() {
         return slidePager == null || slidePager.getCurrentItem() == PAGE_VIDEO;
     }
@@ -361,36 +372,33 @@ public class VideoPageFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (playerController != null && playbackReady && isPageActive() && isShowingVideo() && !userPaused) {
-            playerController.play();
+        if (isPageActive() && isShowingVideo() && !userPaused && video != null && textureView != null) {
+            preparePlayback();
         }
         updatePauseIndicator();
     }
 
     @Override
     public void onPause() {
-        if (playerController != null) {
-            playerController.pause();
-        }
+        // Full release frees MediaCodec buffers; pause alone keeps multiple decoders alive.
+        releasePlayback();
         updatePauseIndicator();
         super.onPause();
     }
 
     @Override
     public void onDestroyView() {
-        if (playerController != null) {
-            playerController.release();
-            playerController = null;
-        }
+        releasePlayback();
         profileController = null;
         videoBound = false;
+        textureView = null;
         super.onDestroyView();
     }
 
     private VideoDto resolveVideo() {
         Fragment parent = getParentFragment();
         if (parent instanceof FeedFragment) {
-            return ((FeedFragment) parent).getVideoAt(pagePosition);
+            return ((FeedFragment) parent).getVideoById(videoId);
         }
         return null;
     }
@@ -398,7 +406,7 @@ public class VideoPageFragment extends Fragment {
     private boolean isPageActive() {
         Fragment parent = getParentFragment();
         if (parent instanceof FeedFragment) {
-            return ((FeedFragment) parent).isActivePage(pagePosition);
+            return ((FeedFragment) parent).isActiveVideo(videoId);
         }
         return false;
     }
